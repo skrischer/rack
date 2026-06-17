@@ -64,11 +64,11 @@ function authHeader(user: UserWithJwt): Record<string, string> {
   return { Authorization: `Bearer ${user.accessToken}` };
 }
 
-async function mint(user: UserWithJwt, name?: string): Promise<string> {
+async function mint(user: UserWithJwt, name: string): Promise<string> {
   const res = await fetch(`${baseUrl}/admin/keys`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...authHeader(user) },
-    body: JSON.stringify(name === undefined ? {} : { name }),
+    body: JSON.stringify({ name }),
   });
   expect(res.status).toBe(201);
   return ((await res.json()) as { key: string }).key;

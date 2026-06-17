@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { API_KEY_PREFIX, hashApiKey, hashesEqual, isWellFormedApiKey } from './apiKey.js';
+import { API_KEY_PREFIX, hashApiKey, hashesEqual, isWellFormedApiKey, keyPrefix } from './apiKey.js';
 
 const PEPPER = 'test-pepper';
 
@@ -44,5 +44,18 @@ describe('isWellFormedApiKey', () => {
     expect(isWellFormedApiKey(API_KEY_PREFIX)).toBe(false);
     expect(isWellFormedApiKey('abc')).toBe(false);
     expect(isWellFormedApiKey('')).toBe(false);
+  });
+});
+
+describe('keyPrefix', () => {
+  it('keeps the rack_ prefix plus a few body characters', () => {
+    expect(keyPrefix(`${API_KEY_PREFIX}abcdef0123456789`)).toBe(`${API_KEY_PREFIX}abcdef`);
+  });
+
+  it('exposes far less than the full secret', () => {
+    const key = `${API_KEY_PREFIX}abcdef0123456789`;
+    const prefix = keyPrefix(key);
+    expect(key.startsWith(prefix)).toBe(true);
+    expect(prefix.length).toBeLessThan(key.length);
   });
 });
