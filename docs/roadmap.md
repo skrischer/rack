@@ -11,19 +11,19 @@
 
 | Phase | Name | Spec | Milestone |
 |---|---|---|---|
-| 1 | Foundation & data backbone | — | — |
-| 2 | rack-MCP: auth + tools + hosting | — | — |
-| 3 | Android: auth + plan view + logging | — | — |
-| 4 | Live sync & edit highlighting | — | — |
-| 5 | In-app API-key management & onboarding | — | — |
-| 6 | Agent visualization artifacts | — | — |
-| 7 | Exercise execution detail & images | — | — |
-| 8 | Rest & session timers | — | — |
-| 9 | Guided session player | — | — |
-| 10 | Push notifications & reminders | — | — |
-| 11 | Overviews & dashboards | — | — |
-| 12 | Settings & units | — | — |
-| 13 | Plate calculator & 1RM estimates | — | — |
+| 1 | Foundation & data backbone | [spec](specs/spec-foundation.md) | [#1](https://github.com/skrischer/rack/milestone/1) |
+| 2 | rack-MCP: auth + tools + hosting | [spec](specs/spec-rack-mcp.md) | [#2](https://github.com/skrischer/rack/milestone/2) |
+| 3 | Android: auth + plan view + logging | [spec](specs/spec-android-app.md) | [#3](https://github.com/skrischer/rack/milestone/3) |
+| 4 | Live sync & edit highlighting | [spec](specs/spec-live-sync.md) | [#4](https://github.com/skrischer/rack/milestone/4) |
+| 5 | In-app API-key management & onboarding | [spec](specs/spec-api-key-management.md) | [#5](https://github.com/skrischer/rack/milestone/5) |
+| 6 | Agent visualization artifacts | [spec](specs/spec-visualization-artifacts.md) | [#6](https://github.com/skrischer/rack/milestone/6) |
+| 7 | Exercise execution detail & images | [spec](specs/spec-exercise-detail.md) | [#7](https://github.com/skrischer/rack/milestone/7) |
+| 8 | Rest & session timers | [spec](specs/spec-timers.md) | [#8](https://github.com/skrischer/rack/milestone/8) |
+| 9 | Guided session player | [spec](specs/spec-session-player.md) | [#9](https://github.com/skrischer/rack/milestone/9) |
+| 10 | Push notifications & reminders | [spec](specs/spec-push-notifications.md) | [#10](https://github.com/skrischer/rack/milestone/10) |
+| 11 | Overviews & dashboards | [spec](specs/spec-dashboards.md) | [#11](https://github.com/skrischer/rack/milestone/11) |
+| 12 | Settings & units | [spec](specs/spec-settings.md) | [#12](https://github.com/skrischer/rack/milestone/12) |
+| 13 | Plate calculator & 1RM estimates | [spec](specs/spec-plate-calc-1rm.md) | [#13](https://github.com/skrischer/rack/milestone/13) |
 
 A phase gets a Spec link once `/plan` drafts it, and a Milestone link once the
 spec is merged. The milestone (open/closed + issue progress) is where status
