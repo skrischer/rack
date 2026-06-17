@@ -81,6 +81,87 @@ export async function seedApiKey(
   return data.id;
 }
 
+/** Ids of the rows a seeded plan tree creates, for read-tool assertions. */
+export interface SeededPlanTree {
+  planId: string;
+  dayId: string;
+  planExerciseId: string;
+  setLogId: string;
+  exerciseId: string;
+}
+
+/** Inserts a row through the given client and returns its id. */
+async function insertRow(
+  client: SupabaseClient,
+  table: string,
+  values: Record<string, unknown>,
+): Promise<string> {
+  const { data, error } = await client
+    .from(table)
+    .insert(values)
+    .select('id')
+    .single<{ id: string }>();
+  if (error !== null || data === null) {
+    throw new Error(`failed to seed ${table}: ${error?.message ?? 'no row returned'}`);
+  }
+  return data.id;
+}
+
+/**
+ * Seeds a full plan tree (plan -> day -> exercise -> set log) for `userId`
+ * through that user's own user-scoped client, so the inserts pass RLS exactly as
+ * a real write would. The user-scoped client also reads the public catalog to
+ * pick an arbitrary `exercise_id`; the service-role client cannot (and must not)
+ * touch these user-owned tables. Returns every created id.
+ */
+export async function seedPlanTree(
+  userClient: SupabaseClient,
+  userId: string,
+  planName: string,
+): Promise<SeededPlanTree> {
+  const exercise = await userClient
+    .from('exercises')
+    .select('id')
+    .limit(1)
+    .single<{ id: string }>();
+  if (exercise.error !== null || exercise.data === null) {
+    throw new Error(`no catalog exercise to seed against: ${exercise.error?.message ?? 'empty'}`);
+  }
+  const exerciseId = exercise.data.id;
+  const planId = await insertRow(userClient, 'plans', {
+    user_id: userId,
+    name: planName,
+    kind: 'recomp',
+    source: 'app',
+  });
+  const dayId = await insertRow(userClient, 'plan_days', {
+    user_id: userId,
+    plan_id: planId,
+    position: 0,
+    title: 'Day A',
+    tag: 'push',
+    source: 'app',
+  });
+  const planExerciseId = await insertRow(userClient, 'plan_exercises', {
+    user_id: userId,
+    day_id: dayId,
+    exercise_id: exerciseId,
+    position: 0,
+    target: '3x8',
+    source: 'app',
+  });
+  const setLogId = await insertRow(userClient, 'set_logs', {
+    user_id: userId,
+    plan_exercise_id: planExerciseId,
+    date: '2026-06-01',
+    weight: 60,
+    reps: [8, 8, 8],
+    rir: 2,
+    source: 'app',
+  });
+  return { planId, dayId, planExerciseId, setLogId, exerciseId };
+}
+
 /** Removes a test user (cascades to its `api_keys` and owned rows). */
 export async function deleteUser(admin: SupabaseClient, userId: string): Promise<void> {
   await admin.auth.admin.deleteUser(userId);
