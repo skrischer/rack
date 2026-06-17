@@ -72,7 +72,7 @@ private fun PlanContentPane(
             )
         }
         items(content.days, key = { it.day.id }) { dayContent ->
-            DayCard(dayContent = dayContent, logging = logging)
+            DayCard(dayContent = dayContent, logging = logging, highlightedIds = content.highlightedIds)
         }
     }
 }

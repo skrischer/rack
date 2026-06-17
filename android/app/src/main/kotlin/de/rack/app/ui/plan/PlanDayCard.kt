@@ -23,17 +23,21 @@ import de.rack.app.ui.logging.LoggingSection
 import de.rack.app.ui.logging.setCount
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.theme.SupersetKind
+import de.rack.app.ui.theme.agentHighlight
 import de.rack.app.ui.theme.tagColor
 
 /**
  * A single plan day rendered per the prototype: a head band with a tag-colored
  * number chip, title, and focus, followed by its exercise groups. Each group is a
- * standalone exercise or a violet superset/circuit run.
+ * standalone exercise or a violet superset/circuit run. [highlightedIds] carries
+ * the row ids an agent just touched; the matching head band or exercise row glows
+ * transiently on the volt accent.
  */
 @Composable
 fun DayCard(
     dayContent: DayContent,
     logging: LoggingSection,
+    highlightedIds: Set<String>,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
@@ -44,7 +48,7 @@ fun DayCard(
                 .background(colors.panel, RecompTheme.shapes.xl)
                 .border(RecompTheme.spacing.border, colors.line, RecompTheme.shapes.xl),
     ) {
-        DayHead(day = dayContent.day)
+        DayHead(day = dayContent.day, highlighted = dayContent.day.id in highlightedIds)
         dayContent.groups.forEach { group ->
             if (group.kind != SupersetKind.NONE) {
                 SupersetHeader(kind = group.kind)
@@ -54,6 +58,7 @@ fun DayCard(
                     exercise = exercise,
                     grouped = group.kind != SupersetKind.NONE,
                     logging = logging,
+                    highlighted = exercise.id in highlightedIds,
                 )
             }
         }
@@ -61,7 +66,10 @@ fun DayCard(
 }
 
 @Composable
-private fun DayHead(day: PlanDay) {
+private fun DayHead(
+    day: PlanDay,
+    highlighted: Boolean,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -71,6 +79,7 @@ private fun DayHead(day: PlanDay) {
             Modifier
                 .fillMaxWidth()
                 .background(colors.panelElevated)
+                .agentHighlight(highlighted = highlighted)
                 .padding(horizontal = spacing.cardInsetH, vertical = spacing.xl),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -114,6 +123,7 @@ private fun ExerciseRow(
     exercise: PlanExercise,
     grouped: Boolean,
     logging: LoggingSection,
+    highlighted: Boolean,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
@@ -125,6 +135,7 @@ private fun ExerciseRow(
             Modifier
                 .fillMaxWidth()
                 .then(if (grouped) Modifier.background(colors.supersetTint) else Modifier)
+                .agentHighlight(highlighted = highlighted)
                 .padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV),
     ) {
         Row(

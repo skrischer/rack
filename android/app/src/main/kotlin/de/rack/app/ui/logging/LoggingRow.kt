@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import de.rack.app.domain.SetLog
 import de.rack.app.ui.theme.RecompTheme
+import de.rack.app.ui.theme.agentHighlight
 
 /**
  * The per-exercise logging row from the prototype: the "last time" summary (tap to
@@ -42,7 +43,7 @@ fun LoggingRow(
     ) {
         LastTimeSummary(state = state, onToggleHistory = { handlers.onToggleHistory(exerciseId) })
         if (state.historyExpanded && state.history.isNotEmpty()) {
-            HistoryList(history = state.history)
+            HistoryList(history = state.history, highlightedIds = state.highlightedIds)
         }
         InputsRow(
             state = state,
@@ -66,7 +67,11 @@ private fun LastTimeSummary(
         return
     }
     Row(
-        modifier = Modifier.clickable(onClick = onToggleHistory),
+        modifier =
+            Modifier
+                .agentHighlight(highlighted = last.id in state.highlightedIds, shape = RecompTheme.shapes.sm)
+                .clickable(onClick = onToggleHistory)
+                .padding(horizontal = RecompTheme.spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = "Last time · ${summaryLine(last)}", style = type.lastTime, color = colors.dim)
@@ -75,7 +80,10 @@ private fun LastTimeSummary(
 }
 
 @Composable
-private fun HistoryList(history: List<SetLog>) {
+private fun HistoryList(
+    history: List<SetLog>,
+    highlightedIds: Set<String>,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -89,7 +97,15 @@ private fun HistoryList(history: List<SetLog>) {
         verticalArrangement = Arrangement.spacedBy(spacing.xxs),
     ) {
         history.forEach { entry ->
-            Text(text = summaryLine(entry), style = type.history, color = colors.dim)
+            Text(
+                text = summaryLine(entry),
+                style = type.history,
+                color = colors.dim,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .agentHighlight(highlighted = entry.id in highlightedIds, shape = RecompTheme.shapes.sm),
+            )
         }
     }
 }
