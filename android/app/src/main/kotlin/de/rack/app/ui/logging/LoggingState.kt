@@ -59,20 +59,21 @@ data class ExerciseLogState(
     /**
      * Reconcile an incoming Realtime [change] into this exercise's history by
      * primary key (last-write-wins): a delete drops the row, an insert/update
-     * upserts it without duplicating the app's own echo. Only an agent edit flags
-     * the row for highlight; the app's own `source='app'` echo clears any flag so
-     * a self-edit is never highlighted.
+     * upserts it without duplicating the app's own echo. Highlighting is decided
+     * separately by the transient [de.rack.app.domain.HighlightTracker] (driven by
+     * `source`), so reconciliation only touches the row data here.
      */
     fun applyRealtimeChange(change: SetLogChange): ExerciseLogState {
         val id = change.log.id
         if (change.event == ChangeEvent.DELETE) {
-            return copy(history = history.filterNot { it.id == id }, highlightedIds = highlightedIds - id)
+            return copy(history = history.filterNot { it.id == id })
         }
-        return copy(
-            history = upsertHistory(change.log),
-            highlightedIds = if (change.isAgentEdit) highlightedIds + id else highlightedIds - id,
-        )
+        return copy(history = upsertHistory(change.log))
     }
+
+    /** Project the transient agent-edit [ids] onto this exercise's own rows. */
+    fun withHighlighted(ids: Set<String>): ExerciseLogState =
+        copy(highlightedIds = ids.intersect(history.map(SetLog::id).toSet()))
 
     /** Upsert [entry] into history by id, keeping the list most-recent-first by `loggedAt`. */
     private fun upsertHistory(entry: SetLog): List<SetLog> =

@@ -6,6 +6,7 @@ import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.TrainingRepository
+import de.rack.app.domain.HighlightTracker
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.SetLogChange
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,12 +38,21 @@ class LoggingViewModel(
     private val _uiState = MutableStateFlow(LoggingUiState())
     val uiState: StateFlow<LoggingUiState> = _uiState.asStateFlow()
 
+    private val highlights = HighlightTracker(viewModelScope)
+
     init {
         viewModelScope.launch {
             connectivity.onAvailable().collect { flushPending() }
         }
         viewModelScope.launch {
             realtime.setLogChanges().collect(::reconcileRealtime)
+        }
+        viewModelScope.launch {
+            highlights.highlighted.collect { ids ->
+                _uiState.update { current ->
+                    current.copy(byExercise = current.byExercise.mapValues { (_, s) -> s.withHighlighted(ids) })
+                }
+            }
         }
         flushPending()
     }
@@ -111,12 +121,16 @@ class LoggingViewModel(
     }
 
     /**
-     * Apply a live set-log [change] to the exercise it belongs to. Reconciliation
-     * runs only for an exercise already on screen ([update] skips an absent key);
-     * an unprepared exercise picks the change up from the server read in [prepare].
+     * Apply a live set-log [change] to the exercise it belongs to and update its
+     * transient highlight: an agent edit flags the row (glow + 3 s fade), the app's
+     * own `source='app'` echo clears any flag so a self-edit is never highlighted.
+     * Reconciliation runs only for an exercise already on screen ([update] skips an
+     * absent key); an unprepared exercise picks the change up from [prepare]'s read.
      */
-    private fun reconcileRealtime(change: SetLogChange) =
+    private fun reconcileRealtime(change: SetLogChange) {
         update(change.log.planExerciseId) { it?.applyRealtimeChange(change) }
+        if (change.isAgentEdit) highlights.flag(change.log.id) else highlights.clear(change.log.id)
+    }
 
     private fun update(
         planExerciseId: String,
