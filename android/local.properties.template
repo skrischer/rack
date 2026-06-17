@@ -1,2 +1,3 @@
 supabase.url=http://10.0.2.2:55321
 supabase.anonKey=<local-anon-key-from-supabase-start>
+mcp.baseUrl=http://10.0.2.2:8787
