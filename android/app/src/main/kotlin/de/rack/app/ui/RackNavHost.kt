@@ -20,15 +20,16 @@ import de.rack.app.di.appViewModelFactory
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
+import de.rack.app.ui.plan.PlanScreen
+import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.theme.RecompTheme
 
 /**
  * Single-Activity Compose root. The [container] is exposed through
  * [LocalAppContainer] so screens resolve their repositories. Top-level routing
  * is driven by the persisted auth session: signed out shows the login screen,
- * signed in shows the navigation graph (plan view / logging, added in #22/#23).
- * Until those land the signed-in area shows the Recomp theme showcase with a
- * sign-out action.
+ * signed in shows the navigation graph. The plan view is the signed-in home;
+ * logging is added in #23.
  */
 @Composable
 fun RackNavHost(
@@ -59,7 +60,16 @@ private fun SignedInNavHost(
     onSignOut: () -> Unit,
 ) {
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
-        composable(RackDestinations.PLAN) { PlanPlaceholderScreen(onSignOut = onSignOut) }
+        composable(RackDestinations.PLAN) {
+            val planViewModel: PlanViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
+            val planState by planViewModel.uiState.collectAsStateWithLifecycle()
+            PlanScreen(
+                state = planState,
+                onSelectPlan = planViewModel::selectPlan,
+                onRetry = planViewModel::load,
+                onSignOut = onSignOut,
+            )
+        }
     }
 }
 
