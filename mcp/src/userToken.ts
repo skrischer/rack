@@ -16,7 +16,7 @@
  * docs/specs/spec-rack-mcp.md.
  */
 
-import { createRemoteJWKSet, jwtVerify, SignJWT } from 'jose';
+import { createRemoteJWKSet, jwtVerify, SignJWT, type JWTVerifyGetKey } from 'jose';
 
 /** Lifetime of a minted user token; long enough for one request, short by design. */
 const TOKEN_TTL_SECONDS = 60;
@@ -60,8 +60,11 @@ export function createSupabaseJwks(supabaseUrl: string): SupabaseJwks {
  * missing, malformed, expired, signed by a key not in the JWKS, or carries no
  * usable `sub` — the caller rejects all of these uniformly with 401. The `sub` is
  * the only identity the caller may trust; no `user_id` is read from anywhere else.
+ * The `jwks` parameter is any jose key resolver: production passes the project
+ * {@link SupabaseJwks}; a local resolver is accepted too, so the `exp`/signature
+ * branches stay testable against a key set under the test's control.
  */
-export async function verifyUserJwt(token: string, jwks: SupabaseJwks): Promise<string | null> {
+export async function verifyUserJwt(token: string, jwks: JWTVerifyGetKey): Promise<string | null> {
   try {
     const { payload } = await jwtVerify(token, jwks, { audience: SUPABASE_AUDIENCE });
     return typeof payload.sub === 'string' && payload.sub.length > 0 ? payload.sub : null;
