@@ -13,6 +13,19 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 /** Prefix every minted key carries, used as a cheap malformed-input filter. */
 export const API_KEY_PREFIX = 'rack_';
 
+/** Characters of the secret body kept in the non-secret display prefix. */
+const KEY_PREFIX_BODY_CHARS = 6;
+
+/**
+ * Derives the non-secret display fragment stored in `api_keys.key_prefix`.
+ * Returns `rack_` plus the first few characters of the random body so the list
+ * can show a recognizable label after the plaintext is gone, while keeping far
+ * too little entropy to be useful as a secret.
+ */
+export function keyPrefix(key: string): string {
+  return key.slice(0, API_KEY_PREFIX.length + KEY_PREFIX_BODY_CHARS);
+}
+
 /**
  * Computes the peppered SHA-256 hash of an API key, returned as lowercase hex.
  * The pepper is prepended to the key so the digest cannot be reproduced from a

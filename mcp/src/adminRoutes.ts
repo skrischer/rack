@@ -80,9 +80,9 @@ async function authenticate(
 
 /**
  * Handles `POST /admin/keys`: verify the user JWT against the project JWKS,
- * validate the body, mint a key, and return the plaintext once. Rejects a
- * missing/invalid JWT with 401, a bad body with 400, and a storage failure with
- * 500 (without returning a key).
+ * validate the body, mint a key, and return the plaintext once together with its
+ * non-secret display prefix. Rejects a missing/invalid JWT with 401, a bad body
+ * with 400, and a storage failure with 500 (without returning a key).
  */
 export async function handleMintApiKey(
   req: IncomingMessage,
@@ -99,8 +99,8 @@ export async function handleMintApiKey(
     sendJson(res, 400, { error: 'invalid request body' });
     return;
   }
-  const key = await mintApiKey(config, userId, parsed.data);
-  sendJson(res, 201, { key });
+  const minted = await mintApiKey(config, userId, parsed.data);
+  sendJson(res, 201, { key: minted.key, keyPrefix: minted.keyPrefix });
 }
 
 /**

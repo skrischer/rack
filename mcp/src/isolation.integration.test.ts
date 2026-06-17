@@ -72,7 +72,7 @@ afterAll(async () => {
  */
 async function makeParty(label: string): Promise<Party> {
   const userId = await createConfirmedUser(admin);
-  const key = await mintApiKey(config, userId, { name: `isolation-${label}` });
+  const { key } = await mintApiKey(config, userId, { name: `isolation-${label}` });
   const ctx = await resolve(key);
   const tree = await seedPlanTree(ctx.supabase, userId, `plan-${label}-${randomToken()}`);
   const client = await connect(ctx);
@@ -229,7 +229,7 @@ describe('cross-user isolation', () => {
   });
 
   it('rejects a revoked key at auth resolution', async () => {
-    const revocable = await mintApiKey(config, a.userId, { name: 'isolation-revoke' });
+    const { key: revocable } = await mintApiKey(config, a.userId, { name: 'isolation-revoke' });
     expect(await resolveAuthContext(`Bearer ${revocable}`, config, admin)).not.toBeNull();
 
     const lookup = await admin
