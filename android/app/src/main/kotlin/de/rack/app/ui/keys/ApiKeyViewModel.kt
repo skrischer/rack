@@ -20,6 +20,19 @@ sealed interface ApiKeyListState {
 }
 
 /**
+ * The display state the key-management/onboarding screen renders, bundled into one
+ * parameter: the key [list], whether a create is [isCreating], the transient
+ * [revealedKey] plaintext shown once after minting, and the hosted [endpointUrl]
+ * onboarding presents and builds its config snippet from.
+ */
+data class ApiKeyState(
+    val list: ApiKeyListState,
+    val isCreating: Boolean,
+    val revealedKey: String?,
+    val endpointUrl: String,
+)
+
+/**
  * The key-management screen's callbacks bundled into one parameter: create a named
  * key, revoke an existing key by id, retry a failed list load, dismiss the one-time
  * reveal (discarding the plaintext), and navigate back.
@@ -54,6 +67,13 @@ class ApiKeyViewModel(
 
     private val _isCreating = MutableStateFlow(false)
     val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
+
+    /**
+     * The hosted Streamable-HTTP endpoint URL onboarding presents and copies,
+     * derived from the same base URL the repository's admin calls use so the
+     * generated config snippet always matches the live endpoint.
+     */
+    val mcpEndpointUrl: String = mcpEndpointUrl(repository.mcpBaseUrl)
 
     init {
         load()

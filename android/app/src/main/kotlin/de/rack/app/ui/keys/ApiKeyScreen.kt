@@ -22,18 +22,16 @@ import de.rack.app.domain.ApiKey
 import de.rack.app.ui.theme.RecompTheme
 
 /**
- * Recomp key-management screen: lists the signed-in user's rack-MCP API keys,
- * mints a new named one, reveals its plaintext exactly once, and revokes existing
- * keys. Purely presentational — it observes [listState] / [isCreating] and emits
- * create / revoke / retry / back events upward; the reveal overlay is shown
- * separately from [ApiKeyReveal] while [revealedKey] is non-null. No Supabase
- * access and no business logic live here.
+ * Recomp key-management + onboarding screen: lists the signed-in user's rack-MCP
+ * API keys, mints a new named one, walks a first-time user through connecting an
+ * MCP client, and revokes existing keys. Purely presentational — it renders
+ * [state] and emits create / revoke / retry / back events upward; the onboarding
+ * overlay is shown from [ApiKeyReveal] while [ApiKeyState.revealedKey] is non-null.
+ * No Supabase access and no business logic live here.
  */
 @Composable
 fun ApiKeyScreen(
-    listState: ApiKeyListState,
-    isCreating: Boolean,
-    revealedKey: String?,
+    state: ApiKeyState,
     actions: ApiKeyActions,
     modifier: Modifier = Modifier,
 ) {
@@ -42,21 +40,26 @@ fun ApiKeyScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             KeysTopBar(onBack = actions.onBack)
             Box(modifier = Modifier.weight(1f)) {
-                when (listState) {
+                when (val list = state.list) {
                     is ApiKeyListState.Loading -> CenterSpinner()
-                    is ApiKeyListState.Error -> ErrorPane(message = listState.message, onRetry = actions.onRetry)
+                    is ApiKeyListState.Error -> ErrorPane(message = list.message, onRetry = actions.onRetry)
                     is ApiKeyListState.Content ->
                         KeyListPane(
-                            keys = listState.keys,
-                            isCreating = isCreating,
+                            keys = list.keys,
+                            isCreating = state.isCreating,
+                            endpointUrl = state.endpointUrl,
                             onCreate = actions.onCreate,
                             onRevoke = actions.onRevoke,
                         )
                 }
             }
         }
-        if (revealedKey != null) {
-            ApiKeyReveal(plaintext = revealedKey, onDismiss = actions.onDismissReveal)
+        if (state.revealedKey != null) {
+            ApiKeyReveal(
+                plaintext = state.revealedKey,
+                endpointUrl = state.endpointUrl,
+                onDismiss = actions.onDismissReveal,
+            )
         }
     }
 }
@@ -65,6 +68,7 @@ fun ApiKeyScreen(
 private fun KeyListPane(
     keys: List<ApiKey>,
     isCreating: Boolean,
+    endpointUrl: String,
     onCreate: (String) -> Unit,
     onRevoke: (String) -> Unit,
 ) {
@@ -74,6 +78,9 @@ private fun KeyListPane(
         contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+        if (keys.isEmpty()) {
+            item { OnboardingIntro(endpointUrl = endpointUrl) }
+        }
         item { CreateKeyForm(isCreating = isCreating, onCreate = onCreate) }
         item { Text(text = "YOUR KEYS", style = RecompTheme.typography.kicker, color = RecompTheme.colors.volt) }
         if (keys.isEmpty()) {
@@ -83,6 +90,39 @@ private fun KeyListPane(
                 ApiKeyRow(key = key, onRevoke = { onRevoke(key.id) })
             }
         }
+    }
+}
+
+/**
+ * The zero-key first-run panel that opens onboarding: it explains the next step —
+ * mint a key below, then connect an MCP client — and shows the hosted endpoint the
+ * client will connect to, so the user knows what they are wiring up before the
+ * full reveal+config flow appears on creation.
+ */
+@Composable
+private fun OnboardingIntro(endpointUrl: String) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val spacing = RecompTheme.spacing
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(colors.panel, RecompTheme.shapes.xl)
+                .border(spacing.border, colors.line, RecompTheme.shapes.xl)
+                .padding(spacing.cardInsetH),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
+    ) {
+        Text(text = "CONNECT AN MCP CLIENT", style = type.kicker, color = colors.volt)
+        Text(
+            text =
+                "Create your first key below. You will then get the endpoint, the key, " +
+                    "and a ready-to-paste config to connect your MCP client.",
+            style = type.body,
+            color = colors.dim,
+        )
+        Text(text = "ENDPOINT", style = type.label, color = colors.dim)
+        Text(text = endpointUrl, style = type.loadValue, color = colors.volt)
     }
 }
 

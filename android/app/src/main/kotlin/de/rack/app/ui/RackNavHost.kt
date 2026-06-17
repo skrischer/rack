@@ -17,11 +17,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import de.rack.app.di.AppContainer
 import de.rack.app.di.appViewModelFactory
+import de.rack.app.ui.artifacts.ArtifactActions
+import de.rack.app.ui.artifacts.ArtifactScreen
+import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
+import de.rack.app.ui.keys.ApiKeyState
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingHandlers
 import de.rack.app.ui.logging.LoggingSection
@@ -93,13 +97,34 @@ private fun SignedInNavHost(
                         onRetry = planViewModel::load,
                         onSignOut = onSignOut,
                         onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
+                        onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
                     ),
             )
         }
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
         }
+        composable(RackDestinations.ARTIFACTS) {
+            ArtifactsRoute(onBack = { navController.popBackStack() })
+        }
     }
+}
+
+@Composable
+private fun ArtifactsRoute(onBack: () -> Unit) {
+    val viewModel: ArtifactViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    ArtifactScreen(
+        state = uiState,
+        isRefreshing = isRefreshing,
+        actions =
+            ArtifactActions(
+                onRefresh = viewModel::refresh,
+                onRetry = viewModel::load,
+                onBack = onBack,
+            ),
+    )
 }
 
 @Composable
@@ -109,9 +134,13 @@ private fun KeysRoute(onBack: () -> Unit) {
     val revealedKey by viewModel.revealedKey.collectAsStateWithLifecycle()
     val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
     ApiKeyScreen(
-        listState = listState,
-        isCreating = isCreating,
-        revealedKey = revealedKey,
+        state =
+            ApiKeyState(
+                list = listState,
+                isCreating = isCreating,
+                revealedKey = revealedKey,
+                endpointUrl = viewModel.mcpEndpointUrl,
+            ),
         actions =
             ApiKeyActions(
                 onCreate = viewModel::create,
