@@ -1,11 +1,14 @@
 /**
  * Node HTTP wiring for the rack-MCP Streamable HTTP transport.
  *
- * The server is stateless: every request first resolves its `Authorization`
- * bearer API key to a user-scoped {@link AuthContext} (rejecting with 401 before
- * any tool runs), then builds a fresh `McpServer` and `StreamableHTTPServerTransport`
- * with no session id, disposing both when the response closes. Per-request auth
- * keeps the process horizontally simple and scopes each request to one identity.
+ * Two routes are served. `/mcp` is the stateless Streamable HTTP transport:
+ * every request first resolves its `Authorization` bearer API key to a
+ * user-scoped {@link AuthContext} (rejecting with 401 before any tool runs),
+ * then builds a fresh `McpServer` and `StreamableHTTPServerTransport` with no
+ * session id, disposing both when the response closes. `/admin/keys` is the
+ * JWT-authenticated key-mint endpoint (see {@link handleMintApiKey}). Per-request
+ * auth keeps the process horizontally simple and scopes each request to one
+ * identity.
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
@@ -13,10 +16,12 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { ADMIN_KEYS_PATH, handleMintApiKey } from './adminRoutes.js';
 import { resolveAuthContext } from './auth.js';
 import type { Config } from './config.js';
 import { buildServer } from './server.js';
 import { createAdminClient } from './supabase.js';
+import { createSupabaseJwks, type SupabaseJwks } from './userToken.js';
 
 /** Path the Streamable HTTP transport is served from. */
 const MCP_PATH = '/mcp';
@@ -25,6 +30,7 @@ const MCP_PATH = '/mcp';
 interface RequestDeps {
   config: Config;
   adminClient: SupabaseClient;
+  jwks: SupabaseJwks;
 }
 
 async function handleMcpRequest(
@@ -51,13 +57,20 @@ async function handleMcpRequest(
   await transport.handleRequest(req, res);
 }
 
-function route(req: IncomingMessage, res: ServerResponse, deps: RequestDeps): void {
+function dispatch(req: IncomingMessage, res: ServerResponse, deps: RequestDeps): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost');
-  if (url.pathname !== MCP_PATH) {
-    res.writeHead(404).end();
-    return;
+  if (url.pathname === MCP_PATH) {
+    return handleMcpRequest(req, res, deps);
   }
-  handleMcpRequest(req, res, deps).catch(() => {
+  if (url.pathname === ADMIN_KEYS_PATH) {
+    return handleMintApiKey(req, res, deps.config, deps.jwks);
+  }
+  res.writeHead(404).end();
+  return Promise.resolve();
+}
+
+function route(req: IncomingMessage, res: ServerResponse, deps: RequestDeps): void {
+  dispatch(req, res, deps).catch(() => {
     if (!res.headersSent) {
       res.writeHead(500).end();
     }
@@ -65,10 +78,18 @@ function route(req: IncomingMessage, res: ServerResponse, deps: RequestDeps): vo
 }
 
 /**
- * Creates the Node HTTP server that serves the MCP transport at `/mcp`, with the
- * service-role admin client (used only for the `api_keys` auth lookup) built once.
+ * Creates the Node HTTP server that serves the MCP transport at `/mcp` and the
+ * key-mint endpoint at `/admin/keys`. The service-role admin client (used only
+ * for the pre-auth `api_keys` resolution lookup, never for any write) and the
+ * JWKS resolver (for verifying inbound user JWTs) are both built once for the
+ * server's lifetime. The mint write runs as the resolved user under RLS, so it
+ * does not use the admin client.
  */
 export function createHttpServer(config: Config): Server {
-  const deps: RequestDeps = { config, adminClient: createAdminClient(config) };
+  const deps: RequestDeps = {
+    config,
+    adminClient: createAdminClient(config),
+    jwks: createSupabaseJwks(config.supabaseUrl),
+  };
   return createServer((req, res) => route(req, res, deps));
 }

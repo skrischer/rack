@@ -49,6 +49,38 @@ export async function createConfirmedUser(admin: SupabaseClient): Promise<string
   return data.user.id;
 }
 
+/** A confirmed Auth user plus a real Supabase access token (user JWT) for it. */
+export interface UserWithJwt {
+  userId: string;
+  accessToken: string;
+}
+
+/**
+ * Creates an email-confirmed Auth user and signs it in to obtain a genuine
+ * Supabase user JWT (ES256, signed by the local Auth's JWKS key), mirroring what
+ * the app holds when it calls the mint endpoint. The sign-in uses the anon
+ * client, exactly like a real client would.
+ */
+export async function createConfirmedUserWithJwt(
+  admin: SupabaseClient,
+  config: Config,
+): Promise<UserWithJwt> {
+  const email = `rack-mcp-test-${randomToken()}@example.com`;
+  const password = `pw-${randomToken()}`;
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (created.error !== null || created.data.user === null) {
+    throw new Error(`failed to create test user: ${created.error?.message ?? 'no user'}`);
+  }
+  const anon = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const signedIn = await anon.auth.signInWithPassword({ email, password });
+  if (signedIn.error !== null || signedIn.data.session === null) {
+    throw new Error(`failed to sign in test user: ${signedIn.error?.message ?? 'no session'}`);
+  }
+  return { userId: created.data.user.id, accessToken: signedIn.data.session.access_token };
+}
+
 /** A freshly minted plaintext API key in the `rack_<random>` format. */
 export function newPlaintextKey(): string {
   return `${API_KEY_PREFIX}${randomToken()}${randomToken()}`;
