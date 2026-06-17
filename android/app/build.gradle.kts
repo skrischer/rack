@@ -34,6 +34,7 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"${localProperty("supabase.url")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${localProperty("supabase.anonKey")}\"")
+        buildConfigField("String", "MCP_BASE_URL", "\"${localProperty("mcp.baseUrl")}\"")
     }
 
     buildTypes {
@@ -94,6 +95,12 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.ktor:ktor-client-okhttp:3.0.1")
+
+    // ktor content negotiation + kotlinx JSON for the dedicated MCP admin client
+    // (key create/list/revoke over HTTP). Already on the classpath transitively via
+    // supabase-kt; declared explicitly so the rack-MCP HttpClient owns its config.
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
 
     // Room: the light local cache holding only UNSYNCED set logs (a pending-write
     // queue), flushed and deleted on reconnect. Reads always come from Supabase.
