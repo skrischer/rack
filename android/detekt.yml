@@ -2,3 +2,15 @@ naming:
   FunctionNaming:
     ignoreAnnotated:
       - 'Composable'
+
+style:
+  MagicNumber:
+    # The Recomp design tokens (color hex, dp/sp, motion) are declared as named
+    # vals / data-class properties — those declarations ARE the named constants
+    # MagicNumber asks for. UI literals are passed as named arguments.
+    ignorePropertyDeclaration: true
+    ignoreNamedArgument: true
+  UnusedPrivateMember:
+    # @Preview functions are Compose tooling entry points, not dead code.
+    ignoreAnnotated:
+      - 'Preview'

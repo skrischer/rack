@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Rack" parent="@android:style/Theme.Material.Light.NoActionBar" />
+    <!-- Dark, no-action-bar shell so the launch window matches the Recomp dark
+         background (bg #0d0e11) before Compose draws; Compose owns the actual
+         theme via RecompTheme. -->
+    <style name="Theme.Rack" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/recomp_bg</item>
+        <item name="android:statusBarColor">@color/recomp_bg</item>
+        <item name="android:navigationBarColor">@color/recomp_bg</item>
+    </style>
 </resources>

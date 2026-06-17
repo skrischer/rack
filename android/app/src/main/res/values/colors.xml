@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Recomp app background (docs/design-tokens.md `bg`); used for the launch
+         window and system bars so there is no light flash before Compose draws. -->
+    <color name="recomp_bg">#0D0E11</color>
+</resources>
