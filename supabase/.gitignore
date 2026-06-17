@@ -10,3 +10,8 @@
 # Raw wger export (~4 MB) fetched by seed/fetch-wger.mjs; only the importer and
 # the generated seed.sql are committed. Regenerate with fetch-wger then import-wger.
 seed/wger/
+
+# Raw free-exercise-db export fetched by seed/fetch-free-exercise-db.mjs; the
+# text-only gap-filler for the enrichment routine. Only the fetch + enrich
+# scripts are committed. Regenerate with fetch-free-exercise-db then enrich-exercises.
+seed/free-exercise-db/
