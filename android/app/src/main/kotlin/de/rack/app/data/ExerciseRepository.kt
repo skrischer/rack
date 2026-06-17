@@ -5,6 +5,11 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.storage.storage
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsBytes
+import io.ktor.http.isSuccess
 
 /**
  * The single Supabase access point for the global exercise catalog (`exercises`).
@@ -19,6 +24,7 @@ import io.github.jan.supabase.storage.storage
  */
 class ExerciseRepository(
     private val client: SupabaseClient,
+    private val http: HttpClient = defaultHttpClient(),
 ) {
     /**
      * The execution detail for catalog [id], or `null` when no exercise matches.
@@ -38,6 +44,18 @@ class ExerciseRepository(
         return dto.toDomain(imageUrl = publicImageUrl(dto.imagePath))
     }
 
+    /**
+     * Downloads the bytes behind a public image [url] (from [getExerciseDetail]'s
+     * resolved `imageUrl`) so the detail screen can decode them into an image. The
+     * URL is public-read over the anon key, so no further auth is attached; a non-2xx
+     * response throws so the screen can fall back to the deterministic placeholder.
+     */
+    suspend fun downloadImageBytes(url: String): ByteArray {
+        val response = http.get(url)
+        check(response.status.isSuccess()) { "exercise image download failed: ${response.status}" }
+        return response.bodyAsBytes()
+    }
+
     /** Resolve a relative [imagePath] to its public URL, or `null` when absent. */
     private fun publicImageUrl(imagePath: String?): String? =
         imagePath?.takeIf(String::isNotBlank)?.let { path ->
@@ -50,5 +68,7 @@ class ExerciseRepository(
         const val EXERCISE_DETAIL_COLUMNS =
             "id, name, category, muscles, primary_muscles, secondary_muscles, " +
                 "equipment, instructions, image_path, license, license_author"
+
+        fun defaultHttpClient(): HttpClient = HttpClient(OkHttp)
     }
 }

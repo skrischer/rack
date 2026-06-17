@@ -19,4 +19,13 @@ object RackDestinations {
 
     /** Builds a concrete viewer route for the given artifact id. */
     fun artifactViewerRoute(artifactId: String): String = "artifacts/$artifactId"
+
+    /** Navigation argument carrying the tapped catalog exercise id into the detail route. */
+    const val EXERCISE_ID_ARG = "exerciseId"
+
+    /** Detail route template; [exerciseDetailRoute] fills in a concrete catalog id. */
+    const val EXERCISE_DETAIL = "exercise/{$EXERCISE_ID_ARG}"
+
+    /** Builds a concrete detail route for the given catalog exercise id. */
+    fun exerciseDetailRoute(exerciseId: String): String = "exercise/$exerciseId"
 }

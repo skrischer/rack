@@ -23,6 +23,7 @@ import androidx.navigation.navArgument
 import de.rack.app.di.AppContainer
 import de.rack.app.di.appViewModelFactory
 import de.rack.app.di.artifactViewerViewModelFactory
+import de.rack.app.di.exerciseDetailViewModelFactory
 import de.rack.app.ui.artifacts.ArtifactActions
 import de.rack.app.ui.artifacts.ArtifactScreen
 import de.rack.app.ui.artifacts.ArtifactViewModel
@@ -31,6 +32,8 @@ import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
+import de.rack.app.ui.exercise.ExerciseDetailScreen
+import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
@@ -80,34 +83,7 @@ private fun SignedInNavHost(
 ) {
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
         composable(RackDestinations.PLAN) {
-            val factory = appViewModelFactory(LocalAppContainer.current)
-            val planViewModel: PlanViewModel = viewModel(factory = factory)
-            val loggingViewModel: LoggingViewModel = viewModel(factory = factory)
-            val planState by planViewModel.uiState.collectAsStateWithLifecycle()
-            val loggingState by loggingViewModel.uiState.collectAsStateWithLifecycle()
-            PlanScreen(
-                state = planState,
-                logging =
-                    LoggingSection(
-                        state = loggingState,
-                        handlers =
-                            LoggingHandlers(
-                                prepare = loggingViewModel::prepare,
-                                onWeightChange = loggingViewModel::onWeightChange,
-                                onRepChange = loggingViewModel::onRepChange,
-                                onToggleHistory = loggingViewModel::toggleHistory,
-                                onLog = loggingViewModel::log,
-                            ),
-                    ),
-                actions =
-                    PlanActions(
-                        onSelectPlan = planViewModel::selectPlan,
-                        onRetry = planViewModel::load,
-                        onSignOut = onSignOut,
-                        onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
-                        onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
-                    ),
-            )
+            PlanRoute(navController = navController, onSignOut = onSignOut)
         }
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
@@ -125,7 +101,50 @@ private fun SignedInNavHost(
             val artifactId = entry.arguments?.getString(RackDestinations.ARTIFACT_ID_ARG).orEmpty()
             ArtifactViewerRoute(artifactId = artifactId, onBack = { navController.popBackStack() })
         }
+        composable(
+            route = RackDestinations.EXERCISE_DETAIL,
+            arguments = listOf(navArgument(RackDestinations.EXERCISE_ID_ARG) { type = NavType.StringType }),
+        ) { entry ->
+            val exerciseId = entry.arguments?.getString(RackDestinations.EXERCISE_ID_ARG).orEmpty()
+            ExerciseDetailRoute(exerciseId = exerciseId, onBack = { navController.popBackStack() })
+        }
     }
+}
+
+@Composable
+private fun PlanRoute(
+    navController: NavHostController,
+    onSignOut: () -> Unit,
+) {
+    val factory = appViewModelFactory(LocalAppContainer.current)
+    val planViewModel: PlanViewModel = viewModel(factory = factory)
+    val loggingViewModel: LoggingViewModel = viewModel(factory = factory)
+    val planState by planViewModel.uiState.collectAsStateWithLifecycle()
+    val loggingState by loggingViewModel.uiState.collectAsStateWithLifecycle()
+    PlanScreen(
+        state = planState,
+        logging =
+            LoggingSection(
+                state = loggingState,
+                handlers =
+                    LoggingHandlers(
+                        prepare = loggingViewModel::prepare,
+                        onWeightChange = loggingViewModel::onWeightChange,
+                        onRepChange = loggingViewModel::onRepChange,
+                        onToggleHistory = loggingViewModel::toggleHistory,
+                        onLog = loggingViewModel::log,
+                    ),
+            ),
+        actions =
+            PlanActions(
+                onSelectPlan = planViewModel::selectPlan,
+                onRetry = planViewModel::load,
+                onSignOut = onSignOut,
+                onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
+                onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
+                onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
+            ),
+    )
 }
 
 @Composable
@@ -160,7 +179,18 @@ private fun ArtifactViewerRoute(
     ArtifactViewerScreen(state = uiState, onRetry = viewModel::load, onBack = onBack)
 }
 
-/** Decode PNG bytes into a Compose [ImageBitmap]; null when the bytes are not a valid bitmap. */
+@Composable
+private fun ExerciseDetailRoute(
+    exerciseId: String,
+    onBack: () -> Unit,
+) {
+    val factory = exerciseDetailViewModelFactory(LocalAppContainer.current, exerciseId, ::decodePng)
+    val viewModel: ExerciseDetailViewModel = viewModel(key = exerciseId, factory = factory)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    ExerciseDetailScreen(state = uiState, onRetry = viewModel::load, onBack = onBack)
+}
+
+/** Decode image bytes into a Compose [ImageBitmap]; null when the bytes are not a valid bitmap. */
 private fun decodePng(bytes: ByteArray): ImageBitmap? =
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 
