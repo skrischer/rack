@@ -1,9 +1,11 @@
 package de.rack.app.di
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.rack.app.ui.artifacts.ArtifactViewModel
+import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
@@ -33,6 +35,27 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
                 container.realtimeRepository,
                 container.connectivityObserver,
                 container.appLifecycleObserver,
+            )
+        }
+    }
+
+/**
+ * Factory for the per-artifact viewer ViewModel, which needs a runtime [artifactId]
+ * plus a PNG [decodePng] step (Android bitmap decoding kept out of the ViewModel so
+ * it stays unit-testable). Separate from [appViewModelFactory] because its inputs
+ * are route-scoped, not container-scoped.
+ */
+fun artifactViewerViewModelFactory(
+    container: AppContainer,
+    artifactId: String,
+    decodePng: (ByteArray) -> ImageBitmap?,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            ArtifactViewerViewModel(
+                repository = container.artifactRepository,
+                artifactId = artifactId,
+                decodePng = decodePng,
             )
         }
     }

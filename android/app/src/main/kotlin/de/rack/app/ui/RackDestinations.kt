@@ -10,4 +10,13 @@ object RackDestinations {
     const val PLAN = "plan"
     const val KEYS = "keys"
     const val ARTIFACTS = "artifacts"
+
+    /** Navigation argument carrying the opened artifact's id into the viewer route. */
+    const val ARTIFACT_ID_ARG = "artifactId"
+
+    /** Viewer route template; [artifactViewerRoute] fills in a concrete id. */
+    const val ARTIFACT_VIEWER = "artifacts/{$ARTIFACT_ID_ARG}"
+
+    /** Builds a concrete viewer route for the given artifact id. */
+    fun artifactViewerRoute(artifactId: String): String = "artifacts/$artifactId"
 }
