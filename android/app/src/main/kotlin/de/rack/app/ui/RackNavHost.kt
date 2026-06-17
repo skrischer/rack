@@ -22,6 +22,7 @@ import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
+import de.rack.app.ui.keys.ApiKeyState
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingHandlers
 import de.rack.app.ui.logging.LoggingSection
@@ -109,9 +110,13 @@ private fun KeysRoute(onBack: () -> Unit) {
     val revealedKey by viewModel.revealedKey.collectAsStateWithLifecycle()
     val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
     ApiKeyScreen(
-        listState = listState,
-        isCreating = isCreating,
-        revealedKey = revealedKey,
+        state =
+            ApiKeyState(
+                list = listState,
+                isCreating = isCreating,
+                revealedKey = revealedKey,
+                endpointUrl = viewModel.mcpEndpointUrl,
+            ),
         actions =
             ApiKeyActions(
                 onCreate = viewModel::create,

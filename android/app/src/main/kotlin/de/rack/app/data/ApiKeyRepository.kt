@@ -33,12 +33,19 @@ import kotlinx.serialization.json.Json
  * from the token alone (no `user_id` is ever sent). The create endpoint returns
  * the plaintext exactly once; this layer hands it straight to the caller without
  * persisting or logging it. ViewModels consume this; Composables never do.
+ *
+ * [baseUrl] is also surfaced ([mcpBaseUrl]) so onboarding can build the client
+ * connection details from the very same endpoint constant the admin calls use.
  */
 class ApiKeyRepository(
     private val client: SupabaseClient,
     private val baseUrl: String = BuildConfig.MCP_BASE_URL,
     private val http: HttpClient = defaultHttpClient(),
 ) {
+    /** The rack-MCP base URL backing all admin calls; onboarding derives its config from it. */
+    val mcpBaseUrl: String
+        get() = baseUrl
+
     /** Lists the signed-in user's keys, newest first (non-secret fields only). */
     suspend fun list(): List<ApiKey> {
         val response = http.get(keysUrl) { authorize() }
