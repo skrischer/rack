@@ -6,6 +6,7 @@ import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.ArtifactRepository
 import de.rack.app.data.AuthRepository
 import de.rack.app.data.ConnectivityObserver
+import de.rack.app.data.ExerciseRepository
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.SupabaseClientProvider
@@ -40,6 +41,8 @@ class AppContainer(
     val apiKeyRepository: ApiKeyRepository by lazy { ApiKeyRepository(supabaseClient) }
 
     val artifactRepository: ArtifactRepository by lazy { ArtifactRepository(supabaseClient) }
+
+    val exerciseRepository: ExerciseRepository by lazy { ExerciseRepository(supabaseClient) }
 
     val trainingRepository: TrainingRepository by lazy { TrainingRepository(supabaseClient) }
 
