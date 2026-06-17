@@ -13,10 +13,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
+import de.rack.app.ui.logging.LoggingRow
+import de.rack.app.ui.logging.LoggingSection
+import de.rack.app.ui.logging.setCount
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.theme.SupersetKind
 import de.rack.app.ui.theme.tagColor
@@ -29,6 +33,7 @@ import de.rack.app.ui.theme.tagColor
 @Composable
 fun DayCard(
     dayContent: DayContent,
+    logging: LoggingSection,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
@@ -45,7 +50,11 @@ fun DayCard(
                 SupersetHeader(kind = group.kind)
             }
             group.exercises.forEach { exercise ->
-                ExerciseRow(exercise = exercise, grouped = group.kind != SupersetKind.NONE)
+                ExerciseRow(
+                    exercise = exercise,
+                    grouped = group.kind != SupersetKind.NONE,
+                    logging = logging,
+                )
             }
         }
     }
@@ -104,10 +113,13 @@ private fun SupersetHeader(kind: SupersetKind) {
 private fun ExerciseRow(
     exercise: PlanExercise,
     grouped: Boolean,
+    logging: LoggingSection,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
+    val sets = setCount(exercise.target)
+    LaunchedEffect(exercise.id, sets) { logging.handlers.prepare(exercise.id, sets) }
     Column(
         modifier =
             Modifier
@@ -134,6 +146,9 @@ private fun ExerciseRow(
                 Text(text = "→ ", style = type.cue, color = colors.voltDim)
                 Text(text = cue, style = type.cue, color = colors.dim)
             }
+        }
+        logging.state.byExercise[exercise.id]?.let { state ->
+            LoggingRow(exerciseId = exercise.id, state = state, handlers = logging.handlers)
         }
     }
 }

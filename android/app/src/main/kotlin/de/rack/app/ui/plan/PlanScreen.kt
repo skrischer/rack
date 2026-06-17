@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import de.rack.app.domain.Plan
+import de.rack.app.ui.logging.LoggingSection
 import de.rack.app.ui.theme.RecompTheme
 
 /**
@@ -32,20 +33,20 @@ import de.rack.app.ui.theme.RecompTheme
 @Composable
 fun PlanScreen(
     state: PlanUiState,
-    onSelectPlan: (String) -> Unit,
-    onRetry: () -> Unit,
-    onSignOut: () -> Unit,
+    logging: LoggingSection,
+    actions: PlanActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        TopBar(onSignOut = onSignOut)
+        TopBar(onSignOut = actions.onSignOut)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
                 is PlanUiState.Loading -> CenterSpinner()
                 is PlanUiState.Empty -> CenterMessage(message = "No plans yet. Ask your agent to author one.")
-                is PlanUiState.Error -> ErrorPane(message = state.message, onRetry = onRetry)
-                is PlanUiState.Content -> PlanContentPane(content = state.content, onSelectPlan = onSelectPlan)
+                is PlanUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is PlanUiState.Content ->
+                    PlanContentPane(content = state.content, logging = logging, onSelectPlan = actions.onSelectPlan)
             }
         }
     }
@@ -54,6 +55,7 @@ fun PlanScreen(
 @Composable
 private fun PlanContentPane(
     content: PlanContent,
+    logging: LoggingSection,
     onSelectPlan: (String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
@@ -70,7 +72,7 @@ private fun PlanContentPane(
             )
         }
         items(content.days, key = { it.day.id }) { dayContent ->
-            DayCard(dayContent = dayContent)
+            DayCard(dayContent = dayContent, logging = logging)
         }
     }
 }
