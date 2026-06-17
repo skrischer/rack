@@ -6,3 +6,7 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Raw wger export (~4 MB) fetched by seed/fetch-wger.mjs; only the importer and
+# the generated seed.sql are committed. Regenerate with fetch-wger then import-wger.
+seed/wger/
