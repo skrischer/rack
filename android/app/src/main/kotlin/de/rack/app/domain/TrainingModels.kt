@@ -50,3 +50,32 @@ data class SetLog(
     val rir: Int?,
     val loggedAt: String,
 )
+
+/**
+ * A set log that has been entered but may not yet be persisted to Supabase. It
+ * carries a client-generated [id] (UUID) and the [userId] so a flush upserts the
+ * same row idempotently. Held in the Room cache only while unsynced; on success
+ * it is reconciled to a [SetLog] and removed from the cache.
+ */
+data class PendingLog(
+    val id: String,
+    val userId: String,
+    val planExerciseId: String,
+    val date: String,
+    val weight: Double?,
+    val reps: List<Int>,
+    val rir: Int?,
+    val loggedAt: String,
+) {
+    /** The optimistic [SetLog] shown in history while this log is in flight. */
+    fun toSetLog(): SetLog =
+        SetLog(
+            id = id,
+            planExerciseId = planExerciseId,
+            date = date,
+            weight = weight,
+            reps = reps,
+            rir = rir,
+            loggedAt = loggedAt,
+        )
+}

@@ -89,3 +89,21 @@ internal data class SetLogDto(
             loggedAt = loggedAt,
         )
 }
+
+/**
+ * The row written when logging a set. The client supplies `id` (a UUID) and
+ * `user_id` so a retried upsert lands on the same row (idempotent) under the RLS
+ * `with check (user_id = auth.uid())` policy; `source` is always `'app'`.
+ */
+@Serializable
+internal data class SetLogInsertDto(
+    val id: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("plan_exercise_id") val planExerciseId: String,
+    val date: String,
+    val weight: Double?,
+    val reps: List<Int>,
+    val rir: Int?,
+    @SerialName("logged_at") val loggedAt: String,
+    val source: String = "app",
+)
