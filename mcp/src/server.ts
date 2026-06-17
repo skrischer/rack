@@ -4,14 +4,15 @@
  * The server is built per request and receives the resolved {@link AuthContext}
  * so every tool operates as the authenticated user via the user-scoped Supabase
  * client (never service-role). It exposes a `ping` health check plus the
- * Zod-validated read tools (plans, plan tree, set logs, catalog search); write
- * tools land in a later Phase 2 issue (see docs/specs/spec-rack-mcp.md).
+ * Zod-validated read tools (plans, plan tree, set logs, catalog search) and
+ * write tools (create/update/delete for plans, days, exercises, set logs); see
+ * docs/specs/spec-rack-mcp.md.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { AuthContext } from './auth.js';
-import { registerReadTools } from './tools/index.js';
+import { registerTools } from './tools/index.js';
 
 /** Identifies this server to connecting MCP clients. */
 const SERVER_INFO = { name: 'rack-mcp', version: '0.0.0' } as const;
@@ -33,7 +34,7 @@ export function buildServer(auth: AuthContext): McpServer {
     () => ({ content: [{ type: 'text', text: 'pong' }] }),
   );
 
-  registerReadTools(server, auth);
+  registerTools(server, auth);
 
   return server;
 }
