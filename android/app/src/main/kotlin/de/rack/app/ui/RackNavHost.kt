@@ -20,6 +20,9 @@ import de.rack.app.di.appViewModelFactory
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
+import de.rack.app.ui.keys.ApiKeyActions
+import de.rack.app.ui.keys.ApiKeyScreen
+import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingHandlers
 import de.rack.app.ui.logging.LoggingSection
 import de.rack.app.ui.logging.LoggingViewModel
@@ -89,10 +92,38 @@ private fun SignedInNavHost(
                         onSelectPlan = planViewModel::selectPlan,
                         onRetry = planViewModel::load,
                         onSignOut = onSignOut,
+                        onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
                     ),
             )
         }
+        composable(RackDestinations.KEYS) {
+            KeysRoute(onBack = { navController.popBackStack() })
+        }
     }
+}
+
+@Composable
+private fun KeysRoute(onBack: () -> Unit) {
+    val viewModel: ApiKeyViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
+    val listState by viewModel.listState.collectAsStateWithLifecycle()
+    val revealedKey by viewModel.revealedKey.collectAsStateWithLifecycle()
+    val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
+    ApiKeyScreen(
+        listState = listState,
+        isCreating = isCreating,
+        revealedKey = revealedKey,
+        actions =
+            ApiKeyActions(
+                onCreate = viewModel::create,
+                onRevoke = viewModel::revoke,
+                onRetry = viewModel::load,
+                onDismissReveal = viewModel::clearRevealedKey,
+                onBack = {
+                    viewModel.clearRevealedKey()
+                    onBack()
+                },
+            ),
+    )
 }
 
 @Composable

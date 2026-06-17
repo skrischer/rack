@@ -8,4 +8,5 @@ package de.rack.app.ui
 object RackDestinations {
     const val LOGIN = "login"
     const val PLAN = "plan"
+    const val KEYS = "keys"
 }

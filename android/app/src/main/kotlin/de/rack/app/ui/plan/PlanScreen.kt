@@ -39,7 +39,7 @@ fun PlanScreen(
 ) {
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        TopBar(onSignOut = actions.onSignOut)
+        TopBar(onOpenKeys = actions.onOpenKeys, onSignOut = actions.onSignOut)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
                 is PlanUiState.Loading -> CenterSpinner()
@@ -128,7 +128,10 @@ private fun PlanChip(
 }
 
 @Composable
-private fun TopBar(onSignOut: () -> Unit) {
+private fun TopBar(
+    onOpenKeys: () -> Unit,
+    onSignOut: () -> Unit,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -142,17 +145,31 @@ private fun TopBar(onSignOut: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = "RACK", style = type.kicker, color = colors.volt)
-        Text(
-            text = "SIGN OUT",
-            style = type.label,
-            color = colors.dim,
-            modifier =
-                Modifier
-                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                    .clickable(onClick = onSignOut)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            TopBarAction(label = "KEYS", onClick = onOpenKeys)
+            TopBarAction(label = "SIGN OUT", onClick = onSignOut)
+        }
     }
+}
+
+@Composable
+private fun TopBarAction(
+    label: String,
+    onClick: () -> Unit,
+) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val spacing = RecompTheme.spacing
+    Text(
+        text = label,
+        style = type.label,
+        color = colors.dim,
+        modifier =
+            Modifier
+                .border(spacing.border, colors.line, RecompTheme.shapes.sm)
+                .clickable(onClick = onClick)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+    )
 }
 
 @Composable
