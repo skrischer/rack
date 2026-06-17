@@ -2,29 +2,37 @@
 
 > Created: 2026-06-17
 
-Deliver Android notification infrastructure — runtime permission, channels, local workout reminders (WorkManager), per-user FCM token storage, and a server-sent "your agent updated your plan" push via a Supabase Edge Function triggered by a Database Webhook — so device-local events fire locally and agent edits reach a backgrounded app, reinforcing the live-sync USP.
+Deliver Android notification infrastructure — runtime permission, channels, local workout reminders (WorkManager), the per-user `device_tokens`/`notifications` schema, and the agent-update push chain (a `notifications` row written by a DB trigger, fanned out by a Supabase Edge Function over FCM HTTP v1) — so device-local events fire locally now, and agent edits reach a backgrounded app once the hosted push chain is deployed. Built and verified against the **local Supabase stack** (`supabase start`): the schema, RLS, trigger, local notification permission/channels, and WorkManager reminders are fully local-first; the cross-device FCM delivery path (Firebase service account, deployed Edge Function, Database Webhook, real device push) is **deferred to hosted deploy** and does not block local work.
 
 ## Outcome
 
-- [ ] Each signed-in device registers its FCM token to a per-user `device_tokens` table (one row per device, idempotent upsert on the token); the token is refreshed on `onNewToken` and, on sign-out, the device's row is flagged `active=false` (a soft deactivate, not a hard delete) so the Edge Function's active-tokens read skips it.
-- [ ] An agent write (`source='agent'`) to a user's plan-structure data — the `plans`, `plan_days`, and `plan_exercises` tables only — inserts a row into a `notifications` table; an app write (`source='app'`) does not, and agent edits to `set_logs` and `artifacts` do not.
-- [ ] A `notifications` INSERT fires a Database Webhook that invokes the `push-on-notification` Edge Function, which sends an FCM HTTP v1 message to every active token of that notification's owner (`user_id`) and to no other user's tokens.
-- [ ] With the app backgrounded or killed, a plan change made via the rack-MCP produces a system-tray notification on the user's device titled to the effect of "Your agent updated your plan"; tapping it opens the app at the changed plan (`plan_id` from the payload).
-- [ ] The Edge Function removes any token that FCM reports as `UNREGISTERED`/`NOT_FOUND` (hard-delete of the dead row) so stale tokens do not accumulate.
-- [ ] A workout reminder can be enabled with a weekday set and time; it fires a local notification at that time via WorkManager with no server round-trip, and survives app restart and device reboot.
-- [ ] A `rest_timer` notification channel and a local `showRestTimerDone()` helper exist (importance high, vibrate + sound) for Phase 8/9 to call; this phase wires the channel and helper, not the timer logic.
-- [ ] On Android 13+ the app requests `POST_NOTIFICATIONS` at the right moment and degrades gracefully (no crash, reminders simply do not show) if the user denies it.
-- [ ] `make verify` and `make build` are green; the migration ships RLS for every new user-owned table in the same file.
+### Local (primary — built and checkable now)
+
+- [ ] A local migration (`supabase db reset` / migration up against the local Docker DB) creates `device_tokens` and `notifications`, both user-owned with their `user_id = auth.uid()` RLS policy in the same file; both tables exist and reject cross-user reads when queried against the local stack as a signed-up local Auth user.
+- [ ] An agent write (`source='agent'`) to a user's plan-structure data — the `plans`, `plan_days`, and `plan_exercises` tables only — inserts a row into the `notifications` table; an app write (`source='app'`) does not, and agent edits to `set_logs` and `artifacts` do not. Verifiable end-to-end against the local DB (write via local-running rack-MCP / direct SQL, assert the `notifications` row).
+- [ ] The trigger resolves `user_id` and `plan_id` correctly for all three source tables (walking up to `plans`); inserted rows are well-formed (no NULL `user_id`/`plan_id`). Checkable with local SQL on the local stack.
+- [ ] A workout reminder can be enabled with a weekday set and time; it fires a local notification at that time via WorkManager with no server round-trip, and survives app restart and device reboot. Verifiable on the emulator against the local stack — needs no Firebase.
+- [ ] A `rest_timer` notification channel and a local `showRestTimerDone()` helper exist (importance high, vibrate + sound) for Phase 8/9 to call; this phase wires the channel and helper, not the timer logic. Fully local.
+- [ ] On Android 13+ the app requests `POST_NOTIFICATIONS` at the right moment and degrades gracefully (no crash, reminders simply do not show) if the user denies it. The permission and the `agent_update`/`workout_reminder`/`rest_timer` channels are created independently of any Firebase wiring, so local reminders work with no `google-services.json` present.
+- [ ] Each signed-in device's intended `device_tokens` lifecycle (idempotent upsert on the token, `onNewToken` refresh, sign-out soft-deactivate `active=false`, re-sign-in flip back to `true`) is exercisable against the local stack via the `DeviceTokenRepository` even where the token value is a stub — the table contract and RLS are validated locally; real FCM token issuance is deferred (see below).
+- [ ] `make verify` and `make build` are green against the local stack; the migration ships RLS for every new user-owned table in the same file.
+
+### Deferred — hosted deploy
+
+- [ ] (deferred — hosted deploy) A `notifications` INSERT fires a Supabase Database Webhook that invokes the deployed `push-on-notification` Edge Function, which sends an FCM HTTP v1 message to every active token of that notification's owner (`user_id`) and to no other user's tokens.
+- [ ] (deferred — hosted deploy) With the app backgrounded or killed, a plan change made via the rack-MCP produces a system-tray notification on the user's device titled to the effect of "Your agent updated your plan"; tapping it opens the app at the changed plan (`plan_id` from the payload). Requires a Firebase project + a Play-services device.
+- [ ] (deferred — hosted deploy) Each signed-in device registers its **real** FCM token to `device_tokens`; the token is refreshed on `onNewToken`. Requires `google-services.json` from a Firebase project.
+- [ ] (deferred — hosted deploy) The Edge Function removes any token that FCM reports as `UNREGISTERED`/`NOT_FOUND` (hard-delete of the dead row) so stale tokens do not accumulate. Requires a real FCM round-trip to exercise.
 
 ## Scope
 
 ### In scope
 
-- A `/supabase/migrations` migration adding `device_tokens` (user-owned, RLS) and `notifications` (user-owned, RLS) with the column contract defined under **Data contract** below, plus a trigger that inserts a `notifications` row on agent-sourced plan-structure changes, and the Database Webhook wiring documented for the human to create.
-- A Supabase Edge Function `push-on-notification` (Deno/TypeScript, strict, Zod-validated webhook payload) that reads the owner's active tokens (service-role, server infra) and calls FCM HTTP v1 with a Google service-account OAuth2 token, including stale-token cleanup and webhook-secret verification.
-- Android: `POST_NOTIFICATIONS` runtime permission flow; notification channels (`agent_update`, `workout_reminder`, `rest_timer`); a `FirebaseMessagingService` for token register/refresh and foreground/background message handling with tap deep-link to the changed plan; a `DeviceTokenRepository` over `supabase-kt`.
-- Android: workout-reminder scheduling via WorkManager (weekday + time), persisted in DataStore (device-local prefs), with reboot rescheduling; a minimal in-app notifications section to toggle the reminder and pick days/time.
-- A local `showRestTimerDone()` helper + its channel for Phase 8/9 to call.
+- A `/supabase/migrations` migration adding `device_tokens` (user-owned, RLS) and `notifications` (user-owned, RLS) with the column contract defined under **Data contract** below, plus a trigger that inserts a `notifications` row on agent-sourced plan-structure changes. Built and applied against the local stack (`supabase db reset`); the production apply (`supabase db push` to the managed project) and the Database Webhook creation are deferred — hosted deploy.
+- A Supabase Edge Function `push-on-notification` (Deno/TypeScript, strict, Zod-validated webhook payload) that reads the owner's active tokens (service-role, server infra) and calls FCM HTTP v1 with a Google service-account OAuth2 token, including stale-token cleanup and webhook-secret verification. The function is authored and locally typechecked/linted now; its FCM delivery and deployment are exercised only against a hosted Firebase project + deployed function — deferred.
+- Android: `POST_NOTIFICATIONS` runtime permission flow; notification channels (`agent_update`, `workout_reminder`, `rest_timer`) — these are wired independently of Firebase so local reminders need no `google-services.json`. The `FirebaseMessagingService` (token register/refresh, foreground/background message handling, tap deep-link) and `DeviceTokenRepository` are authored now; the `FirebaseMessagingService`'s real-token and message-delivery behaviour is verified only with a Firebase project — deferred.
+- Android: workout-reminder scheduling via WorkManager (weekday + time), persisted in DataStore (device-local prefs), with reboot rescheduling; a minimal in-app notifications section to toggle the reminder and pick days/time. Fully local.
+- A local `showRestTimerDone()` helper + its channel for Phase 8/9 to call. Fully local.
 
 ### Out of scope
 
@@ -35,7 +43,7 @@ Deliver Android notification infrastructure — runtime permission, channels, lo
 
 ## Data contract
 
-This is the load-bearing contract three issues build on (the trigger writes it, the Edge Function reads it for the FCM title/body and `data` payload, the Android tap reads `plan_id` to deep-link). It is pinned here so no issue has to guess.
+This is the load-bearing contract three issues build on (the trigger writes it, the Edge Function reads it for the FCM title/body and `data` payload, the Android tap reads `plan_id` to deep-link). It is pinned here so no issue has to guess. The schema and trigger are applied and validated against the **local stack**; only the webhook/Edge-Function consumers are hosted-deferred.
 
 ### `notifications` table
 
@@ -76,7 +84,7 @@ Because `plan_days` and `plan_exercises` do not carry `user_id` or (for `plan_ex
 - On `plan_days`: `plan_id := NEW.plan_id`; `user_id := (SELECT user_id FROM plans WHERE id = NEW.plan_id)`.
 - On `plan_exercises`: `plan_id := (SELECT plan_id FROM plan_days WHERE id = NEW.day_id)`; `user_id := (SELECT p.user_id FROM plan_days d JOIN plans p ON p.id = d.plan_id WHERE d.id = NEW.day_id)`.
 
-The trigger writes the resolved `user_id` and `plan_id` into the `notifications` row, sets `type='agent_plan_update'`, `source='agent'`, `title='Your agent updated your plan'`, and `body` to the resolved plan name (or null). It writes only to `notifications`, never back to a plan table (no recursion).
+The trigger writes the resolved `user_id` and `plan_id` into the `notifications` row, sets `type='agent_plan_update'`, `source='agent'`, `title='Your agent updated your plan'`, and `body` to the resolved plan name (or null). It writes only to `notifications`, never back to a plan table (no recursion). The whole trigger is exercisable against the local Docker DB.
 
 ### Coalescing stance (per-row, no debounce)
 
@@ -84,28 +92,40 @@ The trigger fires **per agent-sourced row INSERT/UPDATE**, so a single multi-wri
 
 ## Constraints
 
-Honors the constitution and architecture without restating them: TypeScript strict with no `any`/`as unknown as`/`@ts-ignore` in the Edge Function; Zod validates the webhook payload at the function boundary; both new tables are user-owned and ship their `user_id = auth.uid()` RLS policy in the same migration; the Android client uses only the anon key + user JWT and holds no service-role key; the Edge Function's service-role read is Supabase server infra (Realtime-class), not the rack-MCP, so the "MCP never uses service-role / never accepts `user_id`" rules are not crossed — the MCP is untouched by this phase, and the function never accepts a `user_id` from an external caller (it comes from the DB webhook payload); the notification-producing trigger respects the existing `source`/`updated_at` convention and runs `SECURITY DEFINER` so its `notifications` insert is RLS-safe; no business logic in Composables, reminder/token state behind a repository or a WorkManager worker, UI state via ViewModel + StateFlow; functions ≤ 50 lines, files ≤ 400 lines; no new server is self-hosted (the Edge Function runs on managed Supabase, the rack-MCP and its Caddy/VPS are unaffected).
+Honors the constitution and architecture without restating them: TypeScript strict with no `any`/`as unknown as`/`@ts-ignore` in the Edge Function; Zod validates the webhook payload at the function boundary; both new tables are user-owned and ship their `user_id = auth.uid()` RLS policy in the same migration; the Android client uses only the anon key + user JWT and holds no service-role key; the Edge Function's service-role read is Supabase server infra (Realtime-class), not the rack-MCP, so the "MCP never uses service-role / never accepts `user_id`" rules are not crossed — the MCP is untouched by this phase, and the function never accepts a `user_id` from an external caller (it comes from the DB webhook payload); the notification-producing trigger respects the existing `source`/`updated_at` convention and runs `SECURITY DEFINER` so its `notifications` insert is RLS-safe; no business logic in Composables, reminder/token state behind a repository or a WorkManager worker, UI state via ViewModel + StateFlow; functions ≤ 50 lines, files ≤ 400 lines.
+
+Local-first build/verify path: the schema, RLS, trigger, notification permission/channels, and WorkManager reminders are built and verified against the **local Supabase stack** — `supabase start` provides the local API URL (`http://localhost:55321`), generated anon/service-role keys, JWT secret, and local Postgres; the migration applies via `supabase db reset` / migration up against the local Docker DB (safe — wipes only the local DB); the Android emulator reaches the local stack at `http://10.0.2.2:55321` (physical device: host LAN IP) with only the local anon key in `android/local.properties`; a local Auth test user is created by signing up against the local Auth (no dashboard); local Realtime/Storage are included. The rack-MCP, where exercised, runs as a plain Node process on `http://localhost:<port>` over Streamable HTTP — no Caddy, VPS, domain, or TLS for local dev (those are production-only). **Known local caveat:** some MCP clients require HTTPS even for localhost; solvable with a local `cloudflared` quick-tunnel or a local Caddy with a localhost cert — a caveat, not a blocker, and not needed for this phase's local work (the MCP is untouched here).
+
+Deferred — hosted deploy (constitution hosting choices remain valid, just not exercised locally): production schema apply via `supabase db push` to the managed Supabase project; the `push-on-notification` Edge Function **deployed** to managed Supabase; the Database Webhook on `notifications` INSERT; a Firebase project + FCM service account for real cross-device delivery; the rack-MCP on a VPS behind Caddy with a domain/TLS. The Edge Function runs on managed Supabase, the rack-MCP and its Caddy/VPS are unaffected; no extra self-hosted server is introduced.
 
 ## Prior art
 
 - [Push notifications & reminders — Supabase + FCM (Phase 10)](../prior-art.md#push-notifications--reminders--supabase--fcm-phase-10) — the adopted pattern: per-user FCM token storage, a Database Webhook on a `notifications` INSERT triggering an Edge Function that calls FCM HTTP v1, local scheduling for reminders, and the explicit AVOID of a third-party push SaaS.
-- [Real-time sync & live edit highlighting](../prior-art.md#real-time-sync--live-edit-highlighting) — the agent-edit push is the backgrounded complement to the in-app Realtime highlight delivered in Phase 4 (`docs/specs/spec-live-sync.md`); same `source`-driven signal, different transport.
+- [Real-time sync & live edit highlighting](../prior-art.md#real-time-sync--live-edit-highlighting) — the agent-edit push is the backgrounded complement to the in-app Realtime highlight delivered in Phase 4 (`docs/specs/spec-live-sync.md`); same `source`-driven signal, different transport. Local Realtime is included in the local stack, so the in-app side is locally verifiable.
 - [Rest & session timers — Android, backgrounded (Phase 8)](../prior-art.md#rest--session-timers--android-backgrounded-phase-8) — informs the `rest_timer` channel and the local-notification choice for the timer-done event handled by Phase 8 (`docs/specs/spec-timers.md`).
 
-> Roadmap note: the roadmap's Phase 10 line says "FCM for rest-timer-done while backgrounded". This spec intentionally overrides that looser phrasing and makes rest-timer-done a **local** notification — which the prior-art entry (`prior-art.md`: "prefer local scheduled notifications … no server round-trip needed") and the roadmap's own "(local scheduled where possible)" clause both endorse. FCM is reserved for the cross-device agent-update push, the only trigger that is genuinely server-side.
+> Roadmap note: the roadmap's Phase 10 line says "FCM for rest-timer-done while backgrounded". This spec intentionally overrides that looser phrasing and makes rest-timer-done a **local** notification — which the prior-art entry (`prior-art.md`: "prefer local scheduled notifications … no server round-trip needed") and the roadmap's own "(local scheduled where possible)" clause both endorse. FCM is reserved for the cross-device agent-update push, the only trigger that is genuinely server-side — and the only part of this phase that is deferred to hosted deploy.
 
 ## Human prerequisites
 
-- [ ] Firebase project for the Android app: `google-services.json` placed in `/android/app/` (gitignored), with Cloud Messaging (FCM) enabled.
-- [ ] FCM HTTP v1 service-account JSON (Firebase console → Project settings → Service accounts → Generate new private key) supplied as the Supabase secret `FCM_SERVICE_ACCOUNT` (never committed).
-- [ ] Supabase Edge Functions enabled on the managed project and the Supabase CLI authenticated (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`) so `supabase functions deploy` and `supabase secrets set` can run.
-- [ ] Supabase Database Webhook (Database → Webhooks) created on INSERT of `public.notifications` pointing at the deployed Edge Function URL, with the function's verification header/secret value set as `PUSH_WEBHOOK_SECRET`.
-- [ ] A physical Android device or emulator with Google Play services (FCM does not deliver on a Play-services-less image) for the round-trip QA check.
+### Local (what local development actually needs)
+
+- [ ] Local dev tooling: Docker (for `supabase start`), the Supabase CLI, the Node/Deno toolchain, the Android SDK + an emulator. No managed project, no human-delivered secret: `supabase start` prints the local API URL, anon key, service-role key, JWT secret, and Postgres URL, which replace any managed keys for local dev.
+- [ ] No human-delivered secret is needed for local work. The local Auth test user is created by signing up against the local Auth; any random secret (e.g. an `API_KEY_PEPPER`-style value, not required by this phase) is generated locally by the implementer. `google-services.json` is **not** required for the local path — notification permission/channels and WorkManager reminders run without it.
+
+### Deferred — hosted deploy
+
+- [ ] (deferred) Firebase project for the Android app: `google-services.json` placed in `/android/app/` (gitignored), with Cloud Messaging (FCM) enabled. Required for real FCM token issuance and delivery.
+- [ ] (deferred) FCM HTTP v1 service-account JSON (Firebase console → Project settings → Service accounts → Generate new private key) supplied as the Supabase secret `FCM_SERVICE_ACCOUNT` (never committed).
+- [ ] (deferred) Managed Supabase project with Edge Functions enabled and the Supabase CLI authenticated (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`) so `supabase db push`, `supabase functions deploy`, and `supabase secrets set` can run.
+- [ ] (deferred) Supabase Database Webhook (Database → Webhooks) created on INSERT of `public.notifications` pointing at the deployed Edge Function URL, with the function's verification header/secret value set as `PUSH_WEBHOOK_SECRET`.
+- [ ] (deferred) A physical Android device or emulator with Google Play services (FCM does not deliver on a Play-services-less image) for the round-trip QA check.
 
 ## Prior decisions
 
 | Decision | Rationale | Date |
 | --- | --- | --- |
+| Local-first dev path adopted; hosted deploy (managed `db push`, deployed Edge Function + webhook, Firebase/FCM, VPS/Caddy) deferred. | The schema, RLS, trigger, notification permission/channels, and WorkManager reminders are fully buildable and checkable against the local Supabase stack with no human-delivered secret; only the cross-device FCM delivery chain is genuinely external. Building local-first unblocks most of the phase immediately. | 2026-06-17 |
 | FCM only for the cross-device agent-update push; rest-timer-done and reminders are local notifications (no FCM). | "Prefer local where possible" (roadmap/prior-art): an in-device event needs no server round-trip; FCM earns its keep only when the trigger is server-side (an agent write from another client). | 2026-06-17 |
 | Use a `device_tokens` table (one row per device) rather than a single `fcm_token` column on a profile. | A user may sign in on multiple devices; a per-token table makes register/refresh an idempotent upsert and stale-token deletion a row delete, and keeps RLS trivially per-user. | 2026-06-17 |
 | The agent-update push is driven by a `notifications` table populated by a DB trigger on agent-sourced plan-structure changes, with the webhook on that table. | Matches the prior-art ADOPT exactly; decouples "what changed" from "send a push", gives a clean RLS surface and an audit trail, and lets the webhook filter (only agent plan-structure edits insert a row) instead of firing on every plan mutation. | 2026-06-17 |
@@ -118,7 +138,7 @@ Honors the constitution and architecture without restating them: TypeScript stri
 | FCM messages are sent as a `notification` + `data` payload (not data-only). | A `notification` payload is rendered by the system tray even when the app is killed/backgrounded — required for the "agent updated your plan while backgrounded" outcome — while the `data` block carries the `plan_id` for tap deep-linking. | 2026-06-17 |
 | Reminder preferences (enabled, weekdays, time) live in Android DataStore, not a Supabase table. | They are device-local scheduling prefs with no cross-client or RLS need; a server table would be over-engineering and would wrongly imply server-side scheduling. | 2026-06-17 |
 | Reminders use WorkManager (not AlarmManager). | WorkManager is the modern, Doze-aware, reboot-persistable scheduler; exact-alarm permissions and `BOOT_COMPLETED` plumbing of AlarmManager are unnecessary for a coarse daily/weekly reminder. | 2026-06-17 |
-| Three channels: `agent_update`, `workout_reminder`, `rest_timer`. | Android channels are user-tunable per category; separating them lets the user silence reminders without losing agent pushes, and gives Phase 8 its `rest_timer` channel ready-made. | 2026-06-17 |
+| Three channels: `agent_update`, `workout_reminder`, `rest_timer`, created independently of Firebase. | Android channels are user-tunable per category; separating them lets the user silence reminders without losing agent pushes, gives Phase 8 its `rest_timer` channel ready-made, and — wired independently of `google-services.json` — keeps local reminders working with no Firebase. | 2026-06-17 |
 | Sign-out soft-deactivates (`active=false`); FCM-reported `UNREGISTERED`/`NOT_FOUND` hard-deletes the row. | Two distinct lifecycles: sign-out is reversible (a re-sign-in upsert flips `active` back to `true`, preserving one row per device), whereas a token FCM no longer recognises is permanently dead and is removed. The Edge Function reads only `active=true` rows, so a deactivated token is skipped without being lost. | 2026-06-17 |
 | `google-services.json` and the FCM service-account JSON stay gitignored / in Supabase secrets. | Constitution: no secrets in the repo; the Android app ships only the anon key + user JWT. | 2026-06-17 |
 | A minimal in-app notifications section (reminder toggle + day/time) ships here, to be absorbed by Phase 12 Settings later. | The reminder needs a control surface and Settings is a later phase; a self-contained section avoids blocking on Phase 12 while keeping the footprint small. | 2026-06-17 |
@@ -129,34 +149,42 @@ Full-spec track. Milestone **Phase 10: Push notifications & reminders** (`Depend
 
 ## Verification
 
-- `make verify` green (MCP lint/typecheck/test unaffected; Edge Function lint/typecheck; Android ktlint/detekt).
-- `make build` green (`assembleDebug` builds with the Firebase Messaging dependency and `google-services.json` present).
-- Human QA (Test is `none yet`, so these are run at the milestone-QA gate on a Play-services device):
-  - Sign in on a device; confirm a `device_tokens` row appears for the user with `active=true`; sign out and confirm the row is flagged `active=false` (not deleted); sign back in and confirm the same row flips to `active=true`.
-  - With the app backgrounded or killed, make a plan-structure edit via the rack-MCP (agent, `source='agent'`) on a `plans`/`plan_days`/`plan_exercises` row; a system-tray "Your agent updated your plan" notification appears; tapping it opens the app at the changed plan (`plan_id` from the `data` payload) and the changed row is highlighted (Phase 4 path).
-  - Make an edit in the app itself (`source='app'`); confirm no push is delivered.
-  - Make an agent edit to `set_logs` or `artifacts`; confirm no `notifications` row is inserted and no push is delivered (only plan-structure tables push).
-  - Confirm a second user's edit never produces a notification on the first user's device (cross-user isolation).
-  - Force a stale token (uninstall/reinstall or revoke) and confirm a subsequent send hard-deletes the dead `device_tokens` row rather than erroring repeatedly.
-  - Enable a workout reminder for a near-future weekday/time; confirm the local notification fires at that time with the app closed, and still fires after a device reboot.
-  - On Android 13+, deny `POST_NOTIFICATIONS` and confirm the app does not crash and simply shows no notifications; grant it and confirm delivery resumes.
-  - Trigger the `showRestTimerDone()` helper directly (debug affordance) and confirm it posts on the `rest_timer` channel with sound/vibration.
+- `make verify` green against the local stack (MCP lint/typecheck/test unaffected; Edge Function lint/typecheck; Android ktlint/detekt).
+- `make build` green (`assembleDebug`). Note: the Firebase Messaging dependency may compile, but full local build does not require `google-services.json` for the reminder/channel path; the FCM-dependent build/QA is deferred — hosted deploy.
+
+### Local QA (run against the local stack now)
+
+- Apply the migration via `supabase db reset` against the local Docker DB; confirm `device_tokens` and `notifications` exist with RLS, and that a signed-up local Auth user cannot read another user's rows (cross-user isolation at the table level).
+- Insert/update a `plans`/`plan_days`/`plan_exercises` row with `source='agent'` (direct SQL or via a locally-running rack-MCP write) and confirm exactly one well-formed `notifications` row is inserted with the correct resolved `user_id`/`plan_id`.
+- Make an edit with `source='app'`; confirm no `notifications` row is inserted. Make an agent edit to `set_logs` or `artifacts`; confirm no `notifications` row is inserted (only plan-structure tables produce one).
+- On the emulator (against `http://10.0.2.2:55321`): enable a workout reminder for a near-future weekday/time; confirm the local notification fires at that time with the app closed, and still fires after a device reboot — with no Firebase present.
+- On Android 13+, deny `POST_NOTIFICATIONS` and confirm the app does not crash and simply shows no notifications; grant it and confirm local reminders resume.
+- Trigger the `showRestTimerDone()` helper directly (debug affordance) and confirm it posts on the `rest_timer` channel with sound/vibration.
+
+### Deferred — hosted deploy QA (run at the milestone-QA gate on a Play-services device, once Firebase + the deployed function exist)
+
+- Sign in on a device; confirm a `device_tokens` row appears for the user with `active=true` and a **real** FCM token; sign out and confirm the row is flagged `active=false` (not deleted); sign back in and confirm the same row flips to `active=true`.
+- With the app backgrounded or killed, make a plan-structure edit via the rack-MCP (agent, `source='agent'`); a system-tray "Your agent updated your plan" notification appears; tapping it opens the app at the changed plan (`plan_id` from the `data` payload) and the changed row is highlighted (Phase 4 path).
+- Confirm a second user's edit never produces a notification on the first user's device (cross-user isolation, end-to-end push).
+- Force a stale token (uninstall/reinstall or revoke) and confirm a subsequent send hard-deletes the dead `device_tokens` row rather than erroring repeatedly.
 
 ## Risks and mitigations
 
 | Risk | Mitigation |
 | --- | --- |
-| FCM does not deliver on emulators/devices without Google Play services, masking a working pipeline as broken. | QA prerequisite mandates a Play-services device; document this in the human prerequisites. |
-| The webhook fires on every `notifications` INSERT, allowing a forged or replayed call to spam pushes. | The Edge Function verifies `PUSH_WEBHOOK_SECRET` on every request and rejects mismatches; the table is RLS-protected so only the owner (or the `SECURITY DEFINER` trigger) can insert. |
-| A trigger on three plan-structure tables that inserts a notification row could recurse or double-fire across plans/days/exercises. | The trigger only writes to `notifications` (never back to plan tables) and is scoped to `source='agent'`; per-row pushes for one authoring session are accepted (see Coalescing stance) and de-duped by the app on tap (one `plan_id`). |
-| The `user_id`/`plan_id` join for `plan_days`/`plan_exercises` could yield NULL if a parent row is mid-transaction. | The walk uses the row's own FK (`plan_id`/`day_id`) which references an already-committed parent; the trigger fires after the child write, so the parent exists. A defensive NULL guard skips inserting a malformed notification rather than erroring. |
-| Stale tokens cause repeated failed FCM sends and noise. | The function hard-deletes `UNREGISTERED`/`NOT_FOUND` tokens on the failing send. |
+| FCM does not deliver on emulators/devices without Google Play services, masking a working pipeline as broken. | QA prerequisite mandates a Play-services device; this is part of the deferred — hosted-deploy QA. Local work needs no FCM, so this does not block local progress. |
+| Local notification permission/channels get accidentally gated behind the Firebase wiring, breaking local reminders. | Channels (`agent_update`/`workout_reminder`/`rest_timer`) and the `POST_NOTIFICATIONS` flow are created independently of `google-services.json`; reminders and `showRestTimerDone()` work with no Firebase present (see splitRecommendation in the milestone). |
+| The webhook fires on every `notifications` INSERT, allowing a forged or replayed call to spam pushes. | The Edge Function verifies `PUSH_WEBHOOK_SECRET` on every request and rejects mismatches; the table is RLS-protected so only the owner (or the `SECURITY DEFINER` trigger) can insert. (Exercised in hosted deploy.) |
+| A trigger on three plan-structure tables that inserts a notification row could recurse or double-fire across plans/days/exercises. | The trigger only writes to `notifications` (never back to plan tables) and is scoped to `source='agent'`; per-row pushes for one authoring session are accepted (see Coalescing stance) and de-duped by the app on tap (one `plan_id`). Verifiable locally. |
+| The `user_id`/`plan_id` join for `plan_days`/`plan_exercises` could yield NULL if a parent row is mid-transaction. | The walk uses the row's own FK (`plan_id`/`day_id`) which references an already-committed parent; the trigger fires after the child write, so the parent exists. A defensive NULL guard skips inserting a malformed notification rather than erroring. Verifiable locally. |
+| Stale tokens cause repeated failed FCM sends and noise. | The function hard-deletes `UNREGISTERED`/`NOT_FOUND` tokens on the failing send. (Exercised in hosted deploy.) |
 | Android 13+ permission denial silently breaks reminders and pushes. | Request `POST_NOTIFICATIONS` at a sensible moment, degrade without crashing, and surface the state in the notifications section. |
 | The service-role read in the Edge Function is mistaken for an MCP violation in review. | The spec documents that the Edge Function is managed Supabase server infra, not the rack-MCP, and the MCP code is untouched this phase. |
 | WorkManager coalescing/Doze delays a reminder past its slot. | Accept coarse timing for a workout reminder (not a precise alarm); schedule the next occurrence on fire and reschedule on `BOOT_COMPLETED`/app start. |
 
 ## Decision log
 
+- Local-first dev path adopted 2026-06-17; hosted deploy deferred (managed `db push`, deployed Edge Function + Database Webhook, Firebase/FCM delivery, VPS/Caddy retained as the production target, not exercised locally).
 - FCM scoped to the cross-device agent-update push only; rest-timer-done and reminders are local (auto-resolved under autonomous planning mandate, 2026-06-17).
 - `device_tokens` per-device table over a single `fcm_token` column (auto-resolved under autonomous planning mandate, 2026-06-17).
 - `notifications` table + DB trigger on agent-sourced plan-structure changes + webhook on that table (auto-resolved under autonomous planning mandate, 2026-06-17).
@@ -170,7 +198,7 @@ Full-spec track. Milestone **Phase 10: Push notifications & reminders** (`Depend
 - Sign-out soft-deactivates (`active=false`); FCM-dead tokens hard-delete (auto-resolved under autonomous planning mandate, 2026-06-17).
 - Reminder prefs in DataStore, not a server table (auto-resolved under autonomous planning mandate, 2026-06-17).
 - WorkManager over AlarmManager for reminders (auto-resolved under autonomous planning mandate, 2026-06-17).
-- Three channels `agent_update`/`workout_reminder`/`rest_timer` (auto-resolved under autonomous planning mandate, 2026-06-17).
+- Three channels `agent_update`/`workout_reminder`/`rest_timer`, wired independently of Firebase so local reminders need no `google-services.json` (auto-resolved under autonomous planning mandate, 2026-06-17).
 - Edge Function deletes `UNREGISTERED`/`NOT_FOUND` tokens (auto-resolved under autonomous planning mandate, 2026-06-17).
 - Secrets kept gitignored / in Supabase secrets; app holds only anon key + JWT (auto-resolved under autonomous planning mandate, 2026-06-17).
 - Minimal in-app notifications section here, to be absorbed by Phase 12 (auto-resolved under autonomous planning mandate, 2026-06-17).

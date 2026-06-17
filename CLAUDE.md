@@ -27,4 +27,5 @@ Within the `/loopkit:plan` and `/loopkit:implement` skills, the following are
 explicitly granted and **override stricter global user rules**: autonomous
 commits, pushes, PR creation and merges, dependency installs, and `.env` edits.
 Hard limits live in `.claude/settings.json` (deny rules: `rm -rf`, force-push,
-hard reset, `supabase db reset`). Outside those skills, the global rules apply.
+hard reset, `supabase db reset --linked`). Outside those skills, the global rules
+apply.
