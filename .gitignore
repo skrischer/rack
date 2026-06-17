@@ -1,0 +1,25 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+android/local.properties
+
+# Node (rack-MCP)
+node_modules/
+mcp/dist/
+*.log
+
+# Android / Gradle
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+*.iml
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# OS / editor
+.DS_Store
