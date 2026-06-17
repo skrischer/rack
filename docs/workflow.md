@@ -63,6 +63,36 @@ green. Run Build additionally before opening an app-affecting PR. While Test is
 `none yet`, every acceptance item no machine check covers is verified at the
 human milestone-QA gate instead.
 
+## Local development
+
+The whole stack runs locally; hosted/managed infrastructure is the eventual
+production target, deferred until needed. Each spec's Human-prerequisites section
+splits what local development needs from what is deferred to hosted deploy.
+
+- **Supabase:** `supabase start` runs Postgres + Auth + Realtime + Storage in
+  Docker. The committed `supabase/config.toml` pins the ports, so the local API
+  is `http://localhost:55321` and Postgres is `localhost:55322` (NOT the CLI
+  defaults `54321`/`54322`). `supabase start` prints the local anon key,
+  service-role key, and JWT secret — these replace any managed-project keys for
+  development, so no managed project or human-delivered secret is needed to build
+  a phase locally. Apply schema via migrations against the local DB; a plain
+  `supabase db reset` is safe locally (it wipes only the local Docker DB). The
+  deny-list forbids only `supabase db reset --linked`, which targets the shared
+  remote project.
+- **rack-MCP:** runs as a plain Node process on `http://localhost:<MCP_PORT>`
+  over Streamable HTTP — no Caddy, VPS, domain, or TLS in development. Generate
+  `API_KEY_PEPPER` locally. Caveat: an MCP client that requires HTTPS even for
+  localhost can reach the local server via a `cloudflared` quick-tunnel or a
+  local Caddy with a `localhost` certificate.
+- **Android:** point `android/local.properties` at the local stack — an emulator
+  uses `http://10.0.2.2:55321`, a physical device the host LAN IP on port
+  `55321` — with the local anon key only. Create a test user by signing up
+  against the local Auth.
+- **Genuinely external (stays deferred):** a managed Supabase project + `db
+  push`, a VPS + domain + TLS/Caddy, and Firebase/FCM for real push delivery.
+  Issues that depend on these carry `blocked:human` until the resource is
+  provisioned; the rest of each phase is built and verified locally.
+
 ## Branch and spec naming
 
 - Branches: `feat/<scope>`, `fix/<scope>`, `chore/<scope>`, `docs/<scope>`, `refactor/<scope>`.
