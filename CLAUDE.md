@@ -17,9 +17,14 @@ highlighted via Supabase Realtime.
 - `docs/roadmap.md` — the sequenced phase queue handed to `/loopkit:plan`.
 - `docs/workflow.md` — operational contract for the loopkit skills (branches,
   commands, gates, loops).
+- `docs/design-tokens.md` — **normative** Recomp design tokens (color, type,
+  spacing, radius, motion) extracted from `artifact.html`; the source the Android
+  Compose theme encodes and every `/android` UI phase consumes.
 - `artifact.html` — the Recomp design prototype: the app's visual language
   (dark theme, volt/lime accent `#c8f23a`, Archivo + Spline Sans Mono,
-  push/pull/legs/superset color coding) and the logging UX to match.
+  push/pull/legs/superset color coding) and the logging UX to match. The reusable
+  **tokens** live (normative) in `docs/design-tokens.md`; the prototype's
+  layout/markup is reference only, not normative.
 
 ## Autonomy (within the loopkit skills)
 

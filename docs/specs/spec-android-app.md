@@ -17,7 +17,7 @@ Build the native Android app (Kotlin + Jetpack Compose, MVVM, Coroutines/Flow) t
 - [ ] Logging a set writes a `set_logs` row for the signed-in user with `weight`, `reps[]`, `rir`, `date`/`logged_at`, and `source = 'app'`; the new entry appears in that exercise's history immediately and is readable back by an MCP client (against the local stack).
 - [ ] Set entries typed while offline (or while a write fails) are held in a light local cache and flushed to Supabase when connectivity/auth returns, with no duplicate rows on retry; the cache holds only unsynced logs, not a full mirror of server data.
 - [ ] UI state is exposed by ViewModels as `StateFlow` (loading / content / error); Composables observe state and emit events only — no business logic, no Supabase access, and no `runBlocking` inside Composables.
-- [ ] The app renders in the Recomp dark theme: background `#0d0e11`, volt/lime accent `#c8f23a`, Archivo for display/body and Spline Sans Mono for labels/metrics, push `#c8f23a` / pull `#54c7ec` / legs `#ff8a5b` / superset `#a78bfa` color coding.
+- [ ] The app renders in the Recomp dark theme, encoding the values in [`docs/design-tokens.md`](../design-tokens.md) (the normative token source) exactly: background `#0d0e11`, volt/lime accent `#c8f23a`, Archivo for display/body and Spline Sans Mono for labels/metrics, push `#c8f23a` / pull `#54c7ec` / legs `#ff8a5b` / superset `#a78bfa` color coding.
 - [ ] `make verify` (Android static checks: ktlint/detekt) and `make build` (`assembleDebug`) pass on the branch.
 - [ ] (deferred — hosted deploy) The same `local.properties` mechanism points the app at the **managed** Supabase project URL + anon key (and the host LAN IP for a physical device) for production builds; no code change required, only the credential values change.
 
@@ -32,7 +32,7 @@ Build the native Android app (Kotlin + Jetpack Compose, MVVM, Coroutines/Flow) t
 - Read-only plan view matching the prototype: plan selector, day cards (number, title, focus, tag color), ordered exercises with target + RIR + cue, superset/circuit grouping.
 - Set logging UI: per-set reps inputs + kg input + RIR, a "log" action that persists a `set_logs` row (`source = 'app'`), and dated history with the tap-to-disclose "last time" / full-history pattern.
 - A light local cache (Room or DataStore) holding only unsynced log writes, with a flush-on-reconnect path and idempotent retry.
-- The Recomp design system as Compose theme tokens (colors, the two type families, shape/spacing) reused across screens.
+- The Recomp design system as Compose theme tokens (colors, the two type families, shape/spacing) reused across screens, encoding [`docs/design-tokens.md`](../design-tokens.md) exactly — the normative token source extracted from `artifact.html`.
 - `assembleDebug` building; ktlint/detekt static checks green; root `Makefile` `verify`/`build` targets covering Android (extending whatever Phase 1 established).
 
 ### Out of scope
