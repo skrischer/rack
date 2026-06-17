@@ -1,12 +1,11 @@
 package de.rack.app.ui.timer
 
-import kotlinx.coroutines.Dispatchers
+import de.rack.app.data.TimerController
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import org.junit.After
-import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,23 +18,19 @@ import kotlin.test.assertTrue
  * invariant: a rest reaching zero or being skipped never stops the count-up
  * session timer (docs/specs/spec-timers.md "Service lifecycle"). A mutable fake
  * clock stands in for the elapsed-realtime source so transitions are asserted
- * deterministically; the Main dispatcher is replaced so [viewModelScope] launches
- * (the parked tick loop) do not require an Android looper.
+ * deterministically; the controller's tick loop runs on a test dispatcher scope so
+ * its parked launch needs no Android looper. Every assertion follows a control call
+ * that refreshes synchronously, so it observes the advanced clock immediately.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TimerViewModelTest {
-    private val dispatcher = StandardTestDispatcher()
     private var now = 1_000_000L
-    private val viewModel = TimerViewModel(clock = { now })
-
-    @Before
-    fun setUp() {
-        Dispatchers.setMain(dispatcher)
-    }
+    private val scope = CoroutineScope(StandardTestDispatcher())
+    private val viewModel = TimerViewModel(TimerController(clock = { now }, scope = scope))
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        scope.cancel()
     }
 
     private fun advance(seconds: Int) {

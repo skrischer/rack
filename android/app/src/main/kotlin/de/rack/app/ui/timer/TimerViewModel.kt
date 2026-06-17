@@ -1,116 +1,58 @@
 package de.rack.app.ui.timer
 
-import android.os.SystemClock
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import de.rack.app.domain.RestTimer
-import de.rack.app.domain.SessionTimer
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
+import de.rack.app.data.TimerController
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 /**
- * Drives the Phase-8 rest countdown and count-up session timer and exposes their
- * state as a [StateFlow] for the log screen (no timer logic lives in Composables;
- * see docs/specs/spec-timers.md). All math is delegated to the pure
- * [de.rack.app.domain.TimerEngine] models, anchored on a monotonic elapsed-realtime
- * [clock] so backgrounding never drifts; this ViewModel only re-reads them on a
- * tick and routes the user controls (+15 s / -15 s / skip / restart).
+ * Thin facade over the process-wide [TimerController] for the log screen (no timer
+ * logic lives in Composables; see docs/specs/spec-timers.md). The engine state and
+ * its drift-free tick loop live in the controller — shared with the foreground
+ * [de.rack.app.timer.TimerService] — so this ViewModel only re-exposes the state
+ * [StateFlow] and routes the user controls (+15 s / -15 s / skip / restart).
  *
- * Lifecycle contract (spec "Service lifecycle"): the session timer starts on
- * [startSession] (the first logged set) and stops only on the explicit
- * [stopSession]. A rest reaching zero or being [skipRest]-ped never stops the
- * session — [TimerUiState.session] stays running until [stopSession] is called.
- * The [clock] is injectable so the engine math is unit testable without Android.
+ * Lifecycle contract (spec "Service lifecycle"): [startSession] (the first logged
+ * set) starts the session and the foreground service via [onSessionStart];
+ * [stopSession] is the sole trigger that ends them via [onSessionStop]. A rest
+ * reaching zero or being [skipRest]-ped never stops the session. [onSessionStart]
+ * and [onSessionStop] default to no-ops so the math stays unit testable without
+ * Android; the host wires them to start/stop the service.
  */
 class TimerViewModel(
-    private val clock: () -> Long = SystemClock::elapsedRealtime,
+    private val controller: TimerController,
+    private val onSessionStart: () -> Unit = {},
+    private val onSessionStop: () -> Unit = {},
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(TimerUiState())
-    val uiState: StateFlow<TimerUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<TimerUiState> = controller.uiState
 
-    private var restTimer: RestTimer? = null
-    private var restDurationSeconds: Int = 0
-    private var sessionTimer: SessionTimer? = null
-    private var ticker: Job? = null
+    /** Emits once each time a running rest crosses zero, for the in-app completion alert. */
+    val restFinished: SharedFlow<Unit> = controller.restFinished
 
-    /** Begin the count-up session at the current clock instant, if not already running. */
+    /** Begin the count-up session and start the foreground service hosting it. */
     fun startSession() {
-        if (sessionTimer != null) return
-        sessionTimer = SessionTimer.start(clock())
-        refresh()
-        ensureTicking()
+        controller.startSession()
+        onSessionStart()
     }
 
-    /** Explicitly end the session: the sole trigger that stops the session timer. */
+    /** Explicitly end the session: stops the timers and the foreground service. */
     fun stopSession() {
-        sessionTimer = null
-        restTimer = null
-        restDurationSeconds = 0
-        ticker?.cancel()
-        ticker = null
-        _uiState.value = TimerUiState()
+        controller.stopSession()
+        onSessionStop()
     }
 
     /** Start (or replace) the rest countdown with [durationSeconds] from now. */
-    fun startRest(durationSeconds: Int) {
-        restDurationSeconds = durationSeconds.coerceAtLeast(0)
-        restTimer = RestTimer.start(restDurationSeconds, clock())
-        refresh()
-        ensureTicking()
-    }
+    fun startRest(durationSeconds: Int) = controller.startRest(durationSeconds)
 
     /** Add 15 s to the running rest; no-op when no rest is active. */
-    fun addRest() = mutateRest { it.addStep() }
+    fun addRest() = controller.addRest()
 
     /** Subtract 15 s from the running rest, clamped so remaining never goes negative. */
-    fun subtractRest() = mutateRest { it.subtractStep(clock()) }
+    fun subtractRest() = controller.subtractRest()
 
     /** Skip the rest (end it now); the session timer keeps running. */
-    fun skipRest() = mutateRest { it.skip(clock()) }
+    fun skipRest() = controller.skipRest()
 
-    /** Restart the current rest at its original [restDurationSeconds] from now. */
-    fun restartRest() {
-        if (restTimer == null) return
-        startRest(restDurationSeconds)
-    }
-
-    private fun mutateRest(transform: (RestTimer) -> RestTimer) {
-        val current = restTimer ?: return
-        restTimer = transform(current)
-        refresh()
-    }
-
-    private fun ensureTicking() {
-        if (ticker?.isActive == true) return
-        ticker =
-            viewModelScope.launch {
-                while (isActive && (sessionTimer != null || restTimer != null)) {
-                    refresh()
-                    delay(TICK_INTERVAL_MS)
-                }
-            }
-    }
-
-    /** Recompute the exposed UI state from the anchored models against the clock. */
-    private fun refresh() {
-        val now = clock()
-        val rest = restTimer
-        val session = sessionTimer
-        _uiState.update {
-            TimerUiState(
-                rest = rest?.let { RestUiState(it.remainingSeconds(now), it.isFinished(now)) },
-                session = session?.let { SessionUiState(it.elapsedSeconds(now)) },
-            )
-        }
-    }
-
-    private companion object {
-        const val TICK_INTERVAL_MS = 250L
-    }
+    /** Restart the current rest at its original duration from now. */
+    fun restartRest() = controller.restartRest()
 }
