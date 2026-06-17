@@ -74,3 +74,96 @@
 - Notes:
   - ADOPT: WebSocket push of server-authoritative changes; visual highlight of remote/agent edits as they land; optimistic UI on the app's own writes.
   - AVOID: CRDT/Yjs conflict-free merging. Rack's concurrency is light — a single owner plus their own agent editing the owner's data from two surfaces. Server-authoritative state + per-entity version + last-write-wins is enough; CRDTs would be cost without benefit.
+
+## Exercise media — images & step-by-step instructions (Phase 7)
+
+### yuhonas/free-exercise-db
+
+- Path: https://github.com/yuhonas/free-exercise-db — `exercises.json` + `exercises/` images
+- License: **data Unlicense (public domain)**; **image license unstated/unresolved** (open issue #2)
+- Verdict: reuse (data) / avoid (images) — broaden text coverage where wger is thin; do not ship its images.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: the ~800-exercise public-domain JSON (name, primary/secondary muscles, equipment, category, step-by-step instructions) to complement wger and fill text gaps.
+  - AVOID: shipping its exercise images — the image license is undocumented. Keep wger's CC-BY-SA images as the primary set and fill remaining gaps with self-produced or explicitly-licensed media.
+
+### ExerciseDB API
+
+- Path: https://github.com/ExerciseDB/exercisedb-api — hosted API, 1300+/11000+ exercises with gifs/images
+- License: open-source API; media licensing/cost unclear
+- Verdict: reference-only — do not take a runtime dependency on a third-party API for core data.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: nothing structurally; a coverage benchmark only.
+  - AVOID: a networked dependency on a third-party catalog for Rack's core exercise data — Rack owns a seeded, self-hosted catalog.
+
+## Rest & session timers — Android, backgrounded (Phase 8)
+
+### TimeR Machine / Just Another Workout Timer / Privacy Friendly Interval Timer
+
+- Path: F-Droid `io.github.deweyreed.timer.other`, `com.blockbasti.justanotherworkouttimer`, `org.secuso.privacyfriendlyintervaltimer`
+- License: FOSS (GPL-family; verify per app before copying code)
+- Verdict: reference-only — pattern reference for a reliable Android timer.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: run the rest timer in a **foreground service** with a persistent notification so it survives backgrounding/Doze; vibrate/sound on completion; per-set defaults by exercise type (compound 2–3 min, isolation 60–90 s, superset 60–90 s, circuit 30–45 s).
+  - AVOID: building a standalone interval-timer app — Rack's timer is embedded in the logging flow, not a separate surface.
+
+### LiftLog / GymRoutines / FitoTrack (built-in rest timer)
+
+- Path: F-Droid `com.noahjutz.gymroutines`, `de.tadris.fitness`; LiftLog
+- License: FOSS (verify per app)
+- Verdict: reference-only — UX reference for an embedded rest timer.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: auto-start the rest timer on set completion; tap-based, minimal interaction inside the log flow.
+  - AVOID: their local-only ceiling — Rack adds sync + agent authoring around the same logging UX.
+
+## Guided workout session — active player UX (Phase 9)
+
+### Strong / Hevy (closed-source, de-facto UX standard) + LiftLog / GymRoutines (FOSS flow)
+
+- Path: Strong / Hevy (commercial); FOSS `com.noahjutz.gymroutines`, LiftLog
+- License: closed (Strong/Hevy); FOSS (the trackers)
+- Verdict: reference-only — UX reference for the session player.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: step-through-the-day flow — current exercise/set in focus, tick sets, rest timer auto-prompts between sets, superset/circuit rotation guidance, a session summary on finish.
+  - AVOID: feature bloat (social feeds, marketplace) — keep the player to the active-session loop.
+
+## Push notifications & reminders — Supabase + FCM (Phase 10)
+
+### Supabase official guide — Edge Function + Database Webhook + FCM HTTP v1
+
+- Path: https://supabase.com/docs/guides/functions/examples/push-notifications
+- License: docs (CC); the pattern is reusable
+- Verdict: reuse (the pattern) — matches the Supabase-full architecture.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: store an `fcm_token` per user; a Database Webhook on INSERT into a `notifications` table triggers an Edge Function that calls FCM HTTP v1 — exactly how the optional "your agent updated your plan" push fits the live-sync USP.
+  - ADOPT: for rest-timer-done and workout reminders, prefer **local scheduled notifications** (WorkManager/AlarmManager) — no server round-trip needed.
+  - AVOID: a third-party push SaaS (OneSignal) — direct FCM via the Edge Function is enough; one less dependency and account.
+
+## Charts & dashboards — Jetpack Compose (Phase 11)
+
+### patrykandpatrick/vico
+
+- Path: https://github.com/patrykandpatrick/vico — `compose-m3` module
+- License: Apache-2.0
+- Verdict: reuse (candidate library) — Compose-native charts.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: Vico for volume/progress/streak charts — Compose-native, Material 3, actively maintained.
+  - AVOID: MPAndroidChart (View-system, wrapped in AndroidView) unless a chart type Vico lacks forces it.
+
+## 1RM estimation (Phase 13)
+
+### Epley / Brzycki formulas
+
+- Path: well-known formulas (no repo) — Epley `1RM = w·(1 + reps/30)`, Brzycki `1RM = w·36/(37−reps)`
+- License: n/a (public formulas)
+- Verdict: reference — implement directly, no dependency.
+- Date: 2026-06-17
+- Notes:
+  - ADOPT: compute an estimate from the heaviest logged set; present it as guidance.
+  - AVOID: over-engineering (multi-formula averaging, ML) — one documented formula, labeled an estimate, is enough.
