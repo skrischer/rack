@@ -30,6 +30,25 @@ enum class ChangeEvent {
     DELETE,
 }
 
+/** The `source` attribution every mutation carries; the highlight signal for the UI. */
+const val SOURCE_AGENT = "agent"
+
+/**
+ * A decoded `set_logs` Realtime change: the [SetLog] the payload carries (for a
+ * delete it is the dropped row's last image, so [SetLog.id] still identifies it),
+ * the mutation [event], and the [source] attribution. Reconciliation upserts/drops
+ * by [SetLog.id] (last-write-wins); [isAgentEdit] is the sole highlight signal, so
+ * the app's own `source='app'` echoes are reconciled but never flagged.
+ */
+data class SetLogChange(
+    val log: SetLog,
+    val event: ChangeEvent,
+    val source: String?,
+) {
+    /** True only when the latest payload was an agent write — the highlight trigger. */
+    val isAgentEdit: Boolean get() = source == SOURCE_AGENT
+}
+
 /** The four user-owned training tables this phase subscribes to over Realtime. */
 enum class SyncedTable(
     val tableName: String,

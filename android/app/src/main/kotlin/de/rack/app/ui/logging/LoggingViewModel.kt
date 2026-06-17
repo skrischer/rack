@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
+import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.TrainingRepository
 import de.rack.app.domain.SetLog
+import de.rack.app.domain.SetLogChange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,12 +20,18 @@ import kotlinx.coroutines.launch
  * set: an optimistic in-memory history insert followed by an idempotent write
  * through the [LoggingRepository], reconciled with the persisted row. Unsynced
  * logs are flushed on reconnect (ConnectivityManager) and on foreground/login.
- * No Supabase access or business logic lives in Composables — the screen observes
- * [uiState] and emits events only.
+ *
+ * It also reconciles the live [RealtimeRepository.setLogChanges] stream into the
+ * same history by primary key (last-write-wins): the app's own `source='app'`
+ * echo updates the row in place without duplicating it or highlighting it, while
+ * an agent edit (`source='agent'`) flags the row for the transient highlight #28
+ * renders. No Supabase access or business logic lives in Composables — the screen
+ * observes [uiState] and emits events only.
  */
 class LoggingViewModel(
     private val training: TrainingRepository,
     private val logging: LoggingRepository,
+    realtime: RealtimeRepository,
     connectivity: ConnectivityObserver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoggingUiState())
@@ -32,6 +40,9 @@ class LoggingViewModel(
     init {
         viewModelScope.launch {
             connectivity.onAvailable().collect { flushPending() }
+        }
+        viewModelScope.launch {
+            realtime.setLogChanges().collect(::reconcileRealtime)
         }
         flushPending()
     }
@@ -98,6 +109,14 @@ class LoggingViewModel(
             }
         }
     }
+
+    /**
+     * Apply a live set-log [change] to the exercise it belongs to. Reconciliation
+     * runs only for an exercise already on screen ([update] skips an absent key);
+     * an unprepared exercise picks the change up from the server read in [prepare].
+     */
+    private fun reconcileRealtime(change: SetLogChange) =
+        update(change.log.planExerciseId) { it?.applyRealtimeChange(change) }
 
     private fun update(
         planExerciseId: String,
