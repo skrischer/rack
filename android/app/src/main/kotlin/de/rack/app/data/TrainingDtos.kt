@@ -46,7 +46,7 @@ internal data class PlanExerciseDto(
     val rir: Int? = null,
     val cue: String? = null,
     @SerialName("superset_label") val supersetLabel: String? = null,
-    val exercises: ExerciseNameDto? = null,
+    val exercises: ExerciseCatalogDto? = null,
 ) {
     fun toDomain(): PlanExercise =
         PlanExercise(
@@ -54,6 +54,7 @@ internal data class PlanExerciseDto(
             dayId = dayId,
             exerciseId = exerciseId,
             name = exercises?.name.orEmpty(),
+            category = exercises?.category,
             position = position,
             target = target,
             rir = rir,
@@ -62,10 +63,11 @@ internal data class PlanExerciseDto(
         )
 }
 
-/** The embedded catalog name from the `exercises` join on `plan_exercises`. */
+/** The embedded catalog name and category from the `exercises` join on `plan_exercises`. */
 @Serializable
-internal data class ExerciseNameDto(
+internal data class ExerciseCatalogDto(
     val name: String,
+    val category: String? = null,
 )
 
 @Serializable

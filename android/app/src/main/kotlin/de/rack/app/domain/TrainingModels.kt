@@ -27,12 +27,13 @@ data class PlanDay(
     val tag: String?,
 )
 
-/** An exercise placed on a plan day (`plan_exercises`), with its catalog name. */
+/** An exercise placed on a plan day (`plan_exercises`), with its catalog name and category. */
 data class PlanExercise(
     val id: String,
     val dayId: String,
     val exerciseId: String,
     val name: String,
+    val category: String?,
     val position: Int,
     val target: String?,
     val rir: Int?,

@@ -1,6 +1,13 @@
 package de.rack.app.ui.timer
 
 import de.rack.app.data.TimerController
+import de.rack.app.domain.PlanExercise
+import de.rack.app.domain.REST_CIRCUIT_SECONDS
+import de.rack.app.domain.REST_COMPOUND_SECONDS
+import de.rack.app.domain.REST_ISOLATION_SECONDS
+import de.rack.app.domain.REST_SUPERSET_SECONDS
+import de.rack.app.ui.plan.LoggedExerciseContext
+import de.rack.app.ui.theme.SupersetKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -114,4 +121,78 @@ class TimerViewModelTest {
         assertEquals(0, state.rest?.remainingSeconds)
         assertTrue(state.rest?.finished == true)
     }
+
+    @Test
+    fun `logging a standalone compound set auto-starts the session and a compound rest with no cue`() {
+        viewModel.onSetLogged(category = "Legs", context = context(group = listOf(exercise("a")), index = 0))
+
+        val state = viewModel.uiState.value
+        assertNotNull(state.session)
+        assertEquals(REST_COMPOUND_SECONDS, state.rest?.remainingSeconds)
+        assertNull(state.rotation)
+    }
+
+    @Test
+    fun `logging a standalone isolation set rests at the isolation default`() {
+        viewModel.onSetLogged(category = "Arms", context = context(group = listOf(exercise("a")), index = 0))
+
+        assertEquals(REST_ISOLATION_SECONDS, viewModel.uiState.value.rest?.remainingSeconds)
+    }
+
+    @Test
+    fun `logging a superset member rests at the superset default and cues the other member`() {
+        val group = listOf(exercise("a", "Press"), exercise("b", "Row"))
+
+        viewModel.onSetLogged(category = "Chest", context = context(group, index = 0))
+
+        val state = viewModel.uiState.value
+        assertEquals(REST_SUPERSET_SECONDS, state.rest?.remainingSeconds)
+        assertEquals(SupersetKind.SUPERSET, state.rotation?.kind)
+        assertEquals("Row", state.rotation?.nextExerciseName)
+    }
+
+    @Test
+    fun `logging a circuit member rests at the circuit default and cues the next station`() {
+        val group = listOf(exercise("a", "A"), exercise("b", "B"), exercise("c", "C"))
+
+        viewModel.onSetLogged(category = "Back", context = context(group, index = 2))
+
+        val state = viewModel.uiState.value
+        assertEquals(REST_CIRCUIT_SECONDS, state.rest?.remainingSeconds)
+        assertEquals(SupersetKind.CIRCUIT, state.rotation?.kind)
+        assertEquals("A", state.rotation?.nextExerciseName) // wraps to the first station
+    }
+
+    @Test
+    fun `a second logged set keeps the same session running`() {
+        viewModel.onSetLogged(category = "Legs", context = context(listOf(exercise("a")), index = 0))
+        advance(60)
+
+        viewModel.onSetLogged(category = "Arms", context = context(listOf(exercise("b")), index = 0))
+
+        val state = viewModel.uiState.value
+        assertEquals(60, state.session?.elapsedSeconds)
+        assertEquals(REST_ISOLATION_SECONDS, state.rest?.remainingSeconds)
+    }
+
+    private fun context(
+        group: List<PlanExercise>,
+        index: Int,
+    ) = LoggedExerciseContext(group = group, index = index)
+
+    private fun exercise(
+        id: String,
+        name: String = id,
+    ) = PlanExercise(
+        id = id,
+        dayId = "day",
+        exerciseId = id,
+        name = name,
+        category = null,
+        position = 0,
+        target = null,
+        rir = null,
+        cue = null,
+        supersetLabel = null,
+    )
 }

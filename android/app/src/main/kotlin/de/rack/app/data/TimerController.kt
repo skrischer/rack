@@ -4,6 +4,7 @@ import android.os.SystemClock
 import de.rack.app.domain.RestTimer
 import de.rack.app.domain.SessionTimer
 import de.rack.app.ui.timer.RestUiState
+import de.rack.app.ui.timer.RotationUiState
 import de.rack.app.ui.timer.SessionUiState
 import de.rack.app.ui.timer.TimerUiState
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +58,7 @@ class TimerController(
     private var restTimer: RestTimer? = null
     private var restDurationSeconds: Int = 0
     private var restAlerted: Boolean = false
+    private var rotation: RotationUiState? = null
     private var sessionTimer: SessionTimer? = null
     private var ticker: Job? = null
 
@@ -75,17 +77,25 @@ class TimerController(
         restTimer = null
         restDurationSeconds = 0
         restAlerted = false
+        rotation = null
         ticker?.cancel()
         ticker = null
         _isSessionActive.value = false
         _uiState.value = TimerUiState()
     }
 
-    /** Start (or replace) the rest countdown with [durationSeconds] from now. */
-    fun startRest(durationSeconds: Int) {
+    /**
+     * Start (or replace) the rest countdown with [durationSeconds] from now, carrying
+     * the optional superset/circuit [rotationCue] to show alongside the rest bar.
+     */
+    fun startRest(
+        durationSeconds: Int,
+        rotationCue: RotationUiState? = null,
+    ) {
         restDurationSeconds = durationSeconds.coerceAtLeast(0)
         restTimer = RestTimer.start(restDurationSeconds, clock())
         restAlerted = false
+        rotation = rotationCue
         refresh()
         ensureTicking()
     }
@@ -102,10 +112,10 @@ class TimerController(
         mutateRest { it.skip(clock()) }
     }
 
-    /** Restart the current rest at its original [restDurationSeconds] from now. */
+    /** Restart the current rest at its original [restDurationSeconds] from now, keeping its rotation cue. */
     fun restartRest() {
         if (restTimer == null) return
-        startRest(restDurationSeconds)
+        startRest(restDurationSeconds, rotation)
     }
 
     private fun mutateRest(transform: (RestTimer) -> RestTimer) {
@@ -138,6 +148,7 @@ class TimerController(
             TimerUiState(
                 rest = rest?.let { RestUiState(it.remainingSeconds(now), it.isFinished(now)) },
                 session = session?.let { SessionUiState(it.elapsedSeconds(now)) },
+                rotation = rotation?.takeIf { rest != null },
             )
     }
 

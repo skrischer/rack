@@ -89,9 +89,10 @@ class TrainingRepository(
             .toDomain()
 
     private companion object {
-        // Explicit columns plus the embedded `exercises(name)` join (Postgrest
-        // foreign-table select), so each plan exercise carries its catalog name.
+        // Explicit columns plus the embedded `exercises(name, category)` join
+        // (Postgrest foreign-table select), so each plan exercise carries its catalog
+        // name and category (the latter drives the compound/isolation rest default).
         const val PLAN_EXERCISE_COLUMNS =
-            "id, day_id, exercise_id, position, target, rir, cue, superset_label, exercises(name)"
+            "id, day_id, exercise_id, position, target, rir, cue, superset_label, exercises(name, category)"
     }
 }
