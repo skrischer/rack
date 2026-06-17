@@ -4,6 +4,7 @@ import android.content.Context
 import de.rack.app.data.AuthRepository
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
+import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.SupabaseClientProvider
 import de.rack.app.data.TrainingRepository
 import de.rack.app.data.local.RackDatabase
@@ -30,6 +31,8 @@ class AppContainer(
     val authRepository: AuthRepository by lazy { AuthRepository(supabaseClient) }
 
     val trainingRepository: TrainingRepository by lazy { TrainingRepository(supabaseClient) }
+
+    val realtimeRepository: RealtimeRepository by lazy { RealtimeRepository(supabaseClient) }
 
     val loggingRepository: LoggingRepository by lazy {
         LoggingRepository(trainingRepository, database.pendingLogDao())
