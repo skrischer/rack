@@ -62,10 +62,12 @@ class ApiKeyViewModel(
         _isCreating.update { true }
         viewModelScope.launch {
             runCatching { repository.create(name) }
-                .onSuccess { created -> _revealedKey.value = created.plaintext }
+                .onSuccess { created ->
+                    _revealedKey.value = created.plaintext
+                    load()
+                }
                 .onFailure { error -> _listState.value = ApiKeyListState.Error(messageFor(error)) }
             _isCreating.update { false }
-            load()
         }
     }
 
@@ -73,8 +75,8 @@ class ApiKeyViewModel(
     fun revoke(keyId: String) {
         viewModelScope.launch {
             runCatching { repository.revoke(keyId) }
+                .onSuccess { load() }
                 .onFailure { error -> _listState.value = ApiKeyListState.Error(messageFor(error)) }
-            load()
         }
     }
 
