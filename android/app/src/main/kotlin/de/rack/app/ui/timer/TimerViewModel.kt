@@ -1,9 +1,28 @@
 package de.rack.app.ui.timer
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import de.rack.app.data.TimerController
+import de.rack.app.domain.resolveGroupRotation
+import de.rack.app.domain.resolveRestSeconds
+import de.rack.app.ui.plan.LoggedExerciseContext
+import de.rack.app.ui.theme.SupersetKind
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * The rest + session controls the in-app [TimerBar] forwards to the [TimerViewModel],
+ * bundled so the bar takes one parameter. Each mirrors a notification action so both
+ * surfaces behave identically (docs/specs/spec-timers.md).
+ */
+@Immutable
+data class TimerBarActions(
+    val onAdd: () -> Unit,
+    val onSubtract: () -> Unit,
+    val onSkip: () -> Unit,
+    val onRestart: () -> Unit,
+    val onEndSession: () -> Unit,
+)
 
 /**
  * Thin facade over the process-wide [TimerController] for the log screen (no timer
@@ -28,6 +47,30 @@ class TimerViewModel(
 
     /** Emits once each time a running rest crosses zero, for the in-app completion alert. */
     val restFinished: SharedFlow<Unit> = controller.restFinished
+
+    /**
+     * Auto-start the timers on the existing Phase-3 log-set action: begin the session
+     * (and its foreground service) on the very first logged set, then start the rest
+     * countdown at the exercise-type duration and record the superset/circuit rotation
+     * cue, all resolved from the logged exercise's [context] (its catalog [category]
+     * and group). See docs/specs/spec-timers.md. A rest reaching zero or being skipped
+     * never stops the session; only [stopSession] does.
+     */
+    fun onSetLogged(
+        category: String?,
+        context: LoggedExerciseContext,
+    ) {
+        if (!controller.isSessionActive.value) startSession()
+        val seconds = resolveRestSeconds(category, context.group.size)
+        controller.startRest(seconds, rotationFor(context))
+    }
+
+    /** Build the in-app rotation cue from [context], or null for a standalone exercise. */
+    private fun rotationFor(context: LoggedExerciseContext): RotationUiState? {
+        val rotation = resolveGroupRotation(context.group, context.index)
+        val next = rotation.next.takeIf { rotation.role != SupersetKind.NONE } ?: return null
+        return RotationUiState(kind = rotation.role, nextExerciseName = next.name)
+    }
 
     /** Begin the count-up session and start the foreground service hosting it. */
     fun startSession() {

@@ -39,6 +39,35 @@ data class DayContent(
 )
 
 /**
+ * The grouping context of one logged plan-exercise: its enclosing superset/circuit
+ * [group] (the consecutive `superset_label` run, or a singleton) and its [index]
+ * within that group. Used to resolve the rest default and the rotation cue on a
+ * logged set (docs/specs/spec-timers.md) without re-deriving the grouping in the UI.
+ */
+data class LoggedExerciseContext(
+    val group: List<PlanExercise>,
+    val index: Int,
+)
+
+/**
+ * Resolves the [LoggedExerciseContext] for [planExerciseId] across all on-screen
+ * [days]: it locates the exercise within its day's grouped runs and returns that run
+ * with the exercise's position in it. Returns null when the id is not on screen.
+ */
+fun findLoggedExerciseContext(
+    days: List<DayContent>,
+    planExerciseId: String,
+): LoggedExerciseContext? {
+    days.forEach { day ->
+        day.groups.forEach { group ->
+            val index = group.exercises.indexOfFirst { it.id == planExerciseId }
+            if (index >= 0) return LoggedExerciseContext(group.exercises, index)
+        }
+    }
+    return null
+}
+
+/**
  * The loaded plan view: the user's plans, the selected plan, and its days, plus the
  * ids of rows ([Plan.id], [PlanDay.id], [PlanExercise.id]) that an agent just
  * touched and are transiently highlighted. The set is driven by the

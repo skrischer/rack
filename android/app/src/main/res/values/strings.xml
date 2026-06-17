@@ -17,4 +17,10 @@
     <string name="timer_notification_rationale_title">Enable timer notifications</string>
     <string name="timer_permission_allow">Allow</string>
     <string name="timer_permission_not_now">Not now</string>
+
+    <!-- Phase 8 timers: in-app rest bar, session timer, and rotation cue embedded in the log flow. -->
+    <string name="timer_end_session">End session</string>
+    <string name="timer_rotation_superset">SUPERSET · NEXT</string>
+    <string name="timer_rotation_circuit">CIRCUIT · NEXT STATION</string>
+    <string name="timer_notifications_denied_notice">Notifications are off. Timers still run and vibrate on rest completion, but the background notification and its controls are unavailable.</string>
 </resources>
