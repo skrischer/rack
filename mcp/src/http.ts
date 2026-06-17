@@ -35,6 +35,15 @@ const MCP_PATH = '/mcp';
 /** Matches `/admin/keys/{id}/revoke`, capturing the key id segment. */
 const REVOKE_PATH = /^\/admin\/keys\/([^/]+)\/revoke$/;
 
+/** Decodes a path segment, returning `null` on malformed percent-encoding. */
+function safeDecode(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
 /** Dependencies a request handler needs, fixed for the server's lifetime. */
 interface RequestDeps {
   config: Config;
@@ -84,7 +93,12 @@ function dispatchAdmin(
   const revokeMatch = REVOKE_PATH.exec(pathname);
   const keyId = revokeMatch?.[1];
   if (keyId !== undefined && req.method === 'POST') {
-    return handleRevokeApiKey(req, res, deps.config, deps.jwks, decodeURIComponent(keyId));
+    const decoded = safeDecode(keyId);
+    if (decoded === null) {
+      res.writeHead(400).end();
+      return Promise.resolve();
+    }
+    return handleRevokeApiKey(req, res, deps.config, deps.jwks, decoded);
   }
   return null;
 }

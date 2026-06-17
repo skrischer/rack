@@ -204,4 +204,14 @@ describe('POST /admin/keys/{id}/revoke', () => {
   it('rejects a malformed (non-uuid) key id with 400', async () => {
     expect((await revoke('not-a-uuid', authHeader(userA))).status).toBe(400);
   });
+
+  it('rejects a malformed percent-encoded key id with 400 without crashing the server', async () => {
+    const res = await fetch(`${baseUrl}/admin/keys/%E0%A4%A/revoke`, {
+      method: 'POST',
+      headers: authHeader(userA),
+    });
+    expect(res.status).toBe(400);
+    // The server is still serving: a well-formed request after it still works.
+    expect((await list(authHeader(userA))).status).toBe(200);
+  });
 });
