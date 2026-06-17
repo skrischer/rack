@@ -56,15 +56,16 @@ truth, milestones and issues are created on GitHub from them.
   resolved and the Gradle build cache populated; the first run after `make
   bootstrap` was ~3.3s, as the Gradle build cache is shared globally so there
   is no large cold penalty.)
-- Test: `none yet` — until a test command exists, every acceptance item no
-  machine check covers is verified at the human milestone-QA gate.
+- Test: `cd mcp && npm test` — the rack-MCP Vitest suite, run as part of `make
+  verify`. Acceptance items no machine check covers are still verified at the
+  human milestone-QA gate.
 - Build: `make build` — full check for app-affecting changes: MCP build +
   `(cd android && ./gradlew assembleDebug)`.
 
 Verify is the per-iteration gate: run it after every change set and fix until
-green. Run Build additionally before opening an app-affecting PR. While Test is
-`none yet`, every acceptance item no machine check covers is verified at the
-human milestone-QA gate instead.
+green. Run Build additionally before opening an app-affecting PR. Acceptance
+items no machine check (Verify, Test) covers are verified at the human
+milestone-QA gate instead.
 
 ## Local development
 

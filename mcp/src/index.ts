@@ -1,18 +1,21 @@
 /**
- * rack-MCP package entry point (scaffold).
+ * rack-MCP entry point.
  *
- * Phase 1 only establishes the package, its strict TypeScript toolchain, and the
- * verify/build gates. The MCP server, transport, and API-key resolution land in
- * Phase 2 (see docs/specs/spec-rack-mcp.md).
+ * Loads and validates configuration from the environment, then starts the
+ * Streamable HTTP MCP server on the configured port. Auth resolution, the
+ * act-as-user Supabase client, and the data tools land in later Phase 2 issues
+ * (see docs/specs/spec-rack-mcp.md).
  */
 
-/** Human-readable name of this package, used by the future MCP server banner. */
-export const PACKAGE_NAME = 'rack-mcp';
+import { loadConfig } from './config.js';
+import { createHttpServer } from './http.js';
 
-/**
- * Returns a greeting for the given name. A trivial typed function so the
- * toolchain (lint, typecheck, build, test) has real source to operate on.
- */
-export function greet(name: string): string {
-  return `Hello, ${name}!`;
+function main(): void {
+  const config = loadConfig();
+  const httpServer = createHttpServer();
+  httpServer.listen(config.mcpPort, () => {
+    console.log(`rack-mcp listening on http://localhost:${config.mcpPort}/mcp`);
+  });
 }
+
+main();
