@@ -20,6 +20,19 @@ sealed interface ApiKeyListState {
 }
 
 /**
+ * The key-management screen's callbacks bundled into one parameter: create a named
+ * key, revoke an existing key by id, retry a failed list load, dismiss the one-time
+ * reveal (discarding the plaintext), and navigate back.
+ */
+data class ApiKeyActions(
+    val onCreate: (String) -> Unit,
+    val onRevoke: (String) -> Unit,
+    val onRetry: () -> Unit,
+    val onDismissReveal: () -> Unit,
+    val onBack: () -> Unit,
+)
+
+/**
  * Drives the key-management screen: lists the signed-in user's keys, mints a new
  * one, and revokes an existing one — all through [ApiKeyRepository] over the
  * JWT-authenticated MCP admin endpoints (no Supabase Postgrest, no service-role).
