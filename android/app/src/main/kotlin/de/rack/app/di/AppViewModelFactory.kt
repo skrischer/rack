@@ -3,6 +3,7 @@ package de.rack.app.di
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
@@ -17,6 +18,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
     viewModelFactory {
         initializer { AuthViewModel(container.authRepository) }
         initializer { ApiKeyViewModel(container.apiKeyRepository) }
+        initializer { ArtifactViewModel(container.artifactRepository) }
         initializer {
             PlanViewModel(
                 container.trainingRepository,

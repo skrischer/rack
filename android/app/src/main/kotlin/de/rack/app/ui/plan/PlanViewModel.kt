@@ -53,8 +53,8 @@ data class PlanContent(
 
 /**
  * The plan-screen actions, bundled so the screen takes one parameter for plan
- * selection, retry, sign-out, and opening API-key management instead of separate
- * lambdas.
+ * selection, retry, sign-out, and opening API-key management / artifacts instead of
+ * separate lambdas.
  */
 @Immutable
 data class PlanActions(
@@ -62,6 +62,7 @@ data class PlanActions(
     val onRetry: () -> Unit,
     val onSignOut: () -> Unit,
     val onOpenKeys: () -> Unit,
+    val onOpenArtifacts: () -> Unit,
 )
 
 /** Plan-view UI state observed by the screen: loading, content, or error. */

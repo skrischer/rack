@@ -3,6 +3,7 @@ package de.rack.app.di
 import android.content.Context
 import de.rack.app.data.ApiKeyRepository
 import de.rack.app.data.AppLifecycleObserver
+import de.rack.app.data.ArtifactRepository
 import de.rack.app.data.AuthRepository
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
@@ -37,6 +38,8 @@ class AppContainer(
     val authRepository: AuthRepository by lazy { AuthRepository(supabaseClient) }
 
     val apiKeyRepository: ApiKeyRepository by lazy { ApiKeyRepository(supabaseClient) }
+
+    val artifactRepository: ArtifactRepository by lazy { ArtifactRepository(supabaseClient) }
 
     val trainingRepository: TrainingRepository by lazy { TrainingRepository(supabaseClient) }
 
