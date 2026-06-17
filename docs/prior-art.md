@@ -12,7 +12,7 @@
 - Verdict: reuse (data only) — seed Rack's exercise catalog from the CC-BY-SA dataset; never reuse the AGPL code.
 - Date: 2026-06-17
 - Notes:
-  - ADOPT: the 400+ exercise catalog (name, muscles, equipment, category) as Rack's seed data, with attribution; the proven domain model concepts — routines → days → sets, supersets/circuits, double progression, rest timers.
+  - ADOPT: the 400+ exercise catalog (name, muscles, equipment, category, plus per-exercise images and step-by-step instructions — coverage is uneven, so gaps are filled per exercise) as Rack's seed data, with attribution; the proven domain model concepts — routines → days → sets, supersets/circuits, double progression, rest timers.
   - AVOID: pulling in any AGPL-3.0 code. AGPL is viral for networked services — reusing wger's backend would force Rack's whole hosted stack under AGPL. Build the backend fresh. Keep CC-BY-SA attribution + share-alike on any derivative dataset.
 
 ## Programmable agent access (MCP write-through to fitness data)
