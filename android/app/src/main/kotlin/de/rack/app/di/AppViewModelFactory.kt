@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
+import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
@@ -56,6 +57,27 @@ fun artifactViewerViewModelFactory(
                 repository = container.artifactRepository,
                 artifactId = artifactId,
                 decodePng = decodePng,
+            )
+        }
+    }
+
+/**
+ * Factory for the per-exercise detail ViewModel, which needs a runtime [exerciseId]
+ * plus an image [decodeImage] step (Android bitmap decoding kept out of the ViewModel
+ * so it stays unit-testable). Separate from [appViewModelFactory] because its inputs
+ * are route-scoped, not container-scoped.
+ */
+fun exerciseDetailViewModelFactory(
+    container: AppContainer,
+    exerciseId: String,
+    decodeImage: (ByteArray) -> ImageBitmap?,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            ExerciseDetailViewModel(
+                repository = container.exerciseRepository,
+                exerciseId = exerciseId,
+                decodeImage = decodeImage,
             )
         }
     }

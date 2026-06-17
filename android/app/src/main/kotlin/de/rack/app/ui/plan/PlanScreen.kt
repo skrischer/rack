@@ -50,7 +50,12 @@ fun PlanScreen(
                 is PlanUiState.Empty -> CenterMessage(message = "No plans yet. Ask your agent to author one.")
                 is PlanUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
                 is PlanUiState.Content ->
-                    PlanContentPane(content = state.content, logging = logging, onSelectPlan = actions.onSelectPlan)
+                    PlanContentPane(
+                        content = state.content,
+                        logging = logging,
+                        onSelectPlan = actions.onSelectPlan,
+                        onOpenExercise = actions.onOpenExercise,
+                    )
             }
         }
     }
@@ -61,6 +66,7 @@ private fun PlanContentPane(
     content: PlanContent,
     logging: LoggingSection,
     onSelectPlan: (String) -> Unit,
+    onOpenExercise: (String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
     LazyColumn(
@@ -76,7 +82,12 @@ private fun PlanContentPane(
             )
         }
         items(content.days, key = { it.day.id }) { dayContent ->
-            DayCard(dayContent = dayContent, logging = logging, highlightedIds = content.highlightedIds)
+            DayCard(
+                dayContent = dayContent,
+                logging = logging,
+                highlightedIds = content.highlightedIds,
+                onOpenExercise = onOpenExercise,
+            )
         }
     }
 }

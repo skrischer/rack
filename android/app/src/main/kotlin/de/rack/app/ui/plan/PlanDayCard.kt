@@ -2,6 +2,7 @@ package de.rack.app.ui.plan
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ fun DayCard(
     dayContent: DayContent,
     logging: LoggingSection,
     highlightedIds: Set<String>,
+    onOpenExercise: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
@@ -59,6 +61,7 @@ fun DayCard(
                     grouped = group.kind != SupersetKind.NONE,
                     logging = logging,
                     highlighted = exercise.id in highlightedIds,
+                    onOpenExercise = onOpenExercise,
                 )
             }
         }
@@ -124,6 +127,7 @@ private fun ExerciseRow(
     grouped: Boolean,
     logging: LoggingSection,
     highlighted: Boolean,
+    onOpenExercise: (String) -> Unit,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
@@ -147,7 +151,10 @@ private fun ExerciseRow(
                 text = exercise.name,
                 style = type.exerciseName,
                 color = colors.txt,
-                modifier = Modifier.weight(1f),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .clickable { onOpenExercise(exercise.exerciseId) },
             )
             Spacer(Modifier.width(spacing.md))
             TargetBadge(target = exercise.target, rir = exercise.rir)
