@@ -1,13 +1,14 @@
 /**
- * Write tool over the caller's visualization artifacts: `create_artifact`
- * uploads agent-authored renderable bytes to the private `artifacts` Storage
- * bucket and inserts the matching `artifacts` row, both acting as the resolved
- * user (RLS / Storage path policies apply), never the service-role key.
+ * Tools over the caller's visualization artifacts. `create_artifact` uploads
+ * agent-authored renderable bytes to the private `artifacts` Storage bucket and
+ * inserts the matching `artifacts` row; `list_artifacts` returns the caller's
+ * artifact rows newest first. All access acts as the resolved user (RLS /
+ * Storage path policies apply), never the service-role key.
  *
  * The object lands at `{user_id}/{artifact_id}.{ext}` inside the bucket, with the
  * extension derived from the validated MIME enum; the row records the full
  * `artifacts/{user_id}/{artifact_id}.{ext}` path, the `type`, `name`, and
- * `source='agent'`. No `user_id` is accepted from the caller: identity comes
+ * `source='agent'`. No `user_id` is accepted from any tool: identity comes
  * solely from the {@link AuthContext}. Input is Zod-validated (bounded MIME
  * allow-list, 2 MB content cap) so oversized or disallowed payloads are rejected
  * at the boundary with no upload or row insert. See
@@ -25,6 +26,9 @@ import { errorResult, jsonResult } from './result.js';
 
 /** The private Storage bucket holding agent-authored artifact objects. */
 const BUCKET = 'artifacts';
+
+/** Columns returned for a listed artifact row (the caller's own, by RLS). */
+const ARTIFACT_COLUMNS = 'id, name, type, storage_path, source, created_at, updated_at';
 
 /** Hard content cap (2 MB) enforced on the decoded bytes at the boundary. */
 const MAX_CONTENT_BYTES = 2 * 1024 * 1024;
@@ -108,7 +112,23 @@ async function createArtifact(
   return jsonResult(data);
 }
 
-/** Registers the `create_artifact` write tool for the resolved user. */
+/**
+ * Lists the resolved user's artifact rows newest first. The query runs through
+ * the user-scoped client so RLS (`user_id = auth.uid()`) limits the result to
+ * the caller's own rows; no `user_id` or account selector is accepted.
+ */
+async function listArtifacts(auth: AuthContext): Promise<CallToolResult> {
+  const { data, error } = await auth.supabase
+    .from('artifacts')
+    .select(ARTIFACT_COLUMNS)
+    .order('created_at', { ascending: false });
+  if (error !== null) {
+    return errorResult(`failed to list artifacts: ${error.message}`);
+  }
+  return jsonResult(data);
+}
+
+/** Registers the artifact tools (`create_artifact`, `list_artifacts`). */
 export function registerArtifactTools(server: McpServer, auth: AuthContext): void {
   server.registerTool(
     'create_artifact',
@@ -119,5 +139,14 @@ export function registerArtifactTools(server: McpServer, auth: AuthContext): voi
       inputSchema: createArtifactSchema,
     },
     async (input) => createArtifact(auth, input),
+  );
+  server.registerTool(
+    'list_artifacts',
+    {
+      title: 'list_artifacts',
+      description: "List the caller's visualization artifacts, newest first.",
+      inputSchema: z.object({}).strict(),
+    },
+    async () => listArtifacts(auth),
   );
 }
