@@ -47,6 +47,7 @@ import de.rack.app.ui.plan.PlanScreen
 import de.rack.app.ui.plan.PlanUiState
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.plan.findLoggedExerciseContext
+import de.rack.app.ui.session.SessionPlayerRoute
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.timer.RestCompletionVibration
 import de.rack.app.ui.timer.TimerBar
@@ -116,6 +117,17 @@ private fun SignedInNavHost(
             val exerciseId = entry.arguments?.getString(RackDestinations.EXERCISE_ID_ARG).orEmpty()
             ExerciseDetailRoute(exerciseId = exerciseId, onBack = { navController.popBackStack() })
         }
+        composable(
+            route = RackDestinations.SESSION,
+            arguments = listOf(navArgument(RackDestinations.SESSION_DAY_ID_ARG) { type = NavType.StringType }),
+        ) { entry ->
+            val dayId = entry.arguments?.getString(RackDestinations.SESSION_DAY_ID_ARG).orEmpty()
+            SessionPlayerRoute(
+                container = LocalAppContainer.current,
+                dayId = dayId,
+                onClose = { navController.popBackStack() },
+            )
+        }
     }
 }
 
@@ -160,6 +172,7 @@ private fun PlanRoute(
                     onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
                     onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
                     onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
+                    onStartSession = { dayId -> navController.navigate(RackDestinations.sessionRoute(dayId)) },
                 ),
             modifier = Modifier.weight(1f),
         )

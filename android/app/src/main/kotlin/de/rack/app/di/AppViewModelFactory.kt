@@ -12,6 +12,7 @@ import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
+import de.rack.app.ui.session.SessionPlayerViewModel
 import de.rack.app.ui.timer.TimerViewModel
 
 /**
@@ -66,6 +67,24 @@ fun artifactViewerViewModelFactory(
                 repository = container.artifactRepository,
                 artifactId = artifactId,
                 decodePng = decodePng,
+            )
+        }
+    }
+
+/**
+ * Factory for the per-day session-player ViewModel, which needs a runtime [dayId] to
+ * read that day's exercises and last logs. Separate from [appViewModelFactory] because
+ * its input is route-scoped, not container-scoped.
+ */
+fun sessionPlayerViewModelFactory(
+    container: AppContainer,
+    dayId: String,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            SessionPlayerViewModel(
+                repository = container.trainingRepository,
+                dayId = dayId,
             )
         }
     }
