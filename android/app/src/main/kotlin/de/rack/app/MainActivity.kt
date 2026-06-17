@@ -5,23 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import de.rack.app.ui.RackNavHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val container = (application as RackApplication).container
         setContent {
             MaterialTheme {
                 Surface {
-                    RackPlaceholder()
+                    RackNavHost(container = container)
                 }
             }
         }
     }
-}
-
-@Composable
-private fun RackPlaceholder() {
-    Text(text = "Rack")
 }
