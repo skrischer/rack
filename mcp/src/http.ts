@@ -63,7 +63,7 @@ function dispatch(req: IncomingMessage, res: ServerResponse, deps: RequestDeps):
     return handleMcpRequest(req, res, deps);
   }
   if (url.pathname === ADMIN_KEYS_PATH) {
-    return handleMintApiKey(req, res, deps.config, deps.adminClient, deps.jwks);
+    return handleMintApiKey(req, res, deps.config, deps.jwks);
   }
   res.writeHead(404).end();
   return Promise.resolve();
@@ -80,8 +80,10 @@ function route(req: IncomingMessage, res: ServerResponse, deps: RequestDeps): vo
 /**
  * Creates the Node HTTP server that serves the MCP transport at `/mcp` and the
  * key-mint endpoint at `/admin/keys`. The service-role admin client (used only
- * for the `api_keys` auth lookup and key-mint write) and the JWKS resolver (for
- * verifying inbound user JWTs) are both built once for the server's lifetime.
+ * for the pre-auth `api_keys` resolution lookup, never for any write) and the
+ * JWKS resolver (for verifying inbound user JWTs) are both built once for the
+ * server's lifetime. The mint write runs as the resolved user under RLS, so it
+ * does not use the admin client.
  */
 export function createHttpServer(config: Config): Server {
   const deps: RequestDeps = {

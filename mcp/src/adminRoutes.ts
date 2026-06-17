@@ -13,8 +13,6 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { extractBearerKey } from './auth.js';
 import type { Config } from './config.js';
 import { mintApiKey, mintApiKeyBodySchema } from './mintApiKey.js';
@@ -68,7 +66,6 @@ export async function handleMintApiKey(
   req: IncomingMessage,
   res: ServerResponse,
   config: Config,
-  adminClient: SupabaseClient,
   jwks: SupabaseJwks,
 ): Promise<void> {
   if (req.method !== 'POST') {
@@ -86,6 +83,6 @@ export async function handleMintApiKey(
     sendJson(res, 400, { error: 'invalid request body' });
     return;
   }
-  const key = await mintApiKey(adminClient, config, userId, parsed.data);
+  const key = await mintApiKey(config, userId, parsed.data);
   sendJson(res, 201, { key });
 }
