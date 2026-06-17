@@ -1,17 +1,21 @@
 package de.rack.app.ui.logging
 
+import de.rack.app.domain.ChangeEvent
 import de.rack.app.domain.SetLog
+import de.rack.app.domain.SetLogChange
 
 /**
  * The logging UI state for a single exercise: the inputs being edited, the loaded
- * history (most-recent first, including any optimistic entry), and transient
- * logging flags. Held per `plan_exercise_id` in [LoggingUiState].
+ * history (most-recent first, including any optimistic entry), the set of row ids
+ * currently flagged for an agent-edit highlight, and transient logging flags.
+ * Held per `plan_exercise_id` in [LoggingUiState].
  */
 data class ExerciseLogState(
     val setCount: Int,
     val weightInput: String = "",
     val repsInputs: List<String> = List(setCount) { "" },
     val history: List<SetLog> = emptyList(),
+    val highlightedIds: Set<String> = emptySet(),
     val historyExpanded: Boolean = false,
     val logging: Boolean = false,
     val error: String? = null,
@@ -51,6 +55,28 @@ data class ExerciseLogState(
         id: String,
         replacement: SetLog,
     ): List<SetLog> = history.map { if (it.id == id) replacement else it }
+
+    /**
+     * Reconcile an incoming Realtime [change] into this exercise's history by
+     * primary key (last-write-wins): a delete drops the row, an insert/update
+     * upserts it without duplicating the app's own echo. Only an agent edit flags
+     * the row for highlight; the app's own `source='app'` echo clears any flag so
+     * a self-edit is never highlighted.
+     */
+    fun applyRealtimeChange(change: SetLogChange): ExerciseLogState {
+        val id = change.log.id
+        if (change.event == ChangeEvent.DELETE) {
+            return copy(history = history.filterNot { it.id == id }, highlightedIds = highlightedIds - id)
+        }
+        return copy(
+            history = upsertHistory(change.log),
+            highlightedIds = if (change.isAgentEdit) highlightedIds + id else highlightedIds - id,
+        )
+    }
+
+    /** Upsert [entry] into history by id, keeping the list most-recent-first by `loggedAt`. */
+    private fun upsertHistory(entry: SetLog): List<SetLog> =
+        (history.filterNot { it.id == entry.id } + entry).sortedByDescending(SetLog::loggedAt)
 
     private companion object {
         const val CACHED_MESSAGE = "Saved offline. It will sync when you reconnect."

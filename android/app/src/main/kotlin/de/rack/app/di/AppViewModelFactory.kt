@@ -20,6 +20,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
             LoggingViewModel(
                 container.trainingRepository,
                 container.loggingRepository,
+                container.realtimeRepository,
                 container.connectivityObserver,
             )
         }
