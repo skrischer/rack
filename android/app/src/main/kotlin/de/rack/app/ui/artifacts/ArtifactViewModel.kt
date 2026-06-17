@@ -22,12 +22,13 @@ sealed interface ArtifactUiState {
 
 /**
  * The artifacts-screen actions, bundled so the screen takes one parameter for
- * refresh, retry, and navigating back instead of separate lambdas.
+ * refresh, retry, opening an artifact, and navigating back instead of separate lambdas.
  */
 @Immutable
 data class ArtifactActions(
     val onRefresh: () -> Unit,
     val onRetry: () -> Unit,
+    val onOpen: (String) -> Unit,
     val onBack: () -> Unit,
 )
 
