@@ -66,9 +66,14 @@ class RealtimeRepository(
     private fun channelChanges(token: String): Flow<RealtimeChange> =
         channelFlow {
             val channel = client.realtime.channel(CHANNEL_TOPIC)
-            SyncedTable.entries.forEach { table ->
-                launch { tableChanges(channel, table).collect(::send) }
-            }
+            // Build and collect every table's change flow up front: creating the
+            // flow registers the table in the channel's Postgres-changes binding
+            // list, which `subscribe` reads into the JOIN payload. Doing this before
+            // `subscribe` (not inside a launched collector that races the JOIN)
+            // guarantees all four tables are part of the subscription.
+            SyncedTable.entries
+                .map { table -> tableChanges(channel, table) }
+                .forEach { flow -> launch { flow.collect(::send) } }
             channel.updateAuth(token)
             channel.subscribe(blockUntilSubscribed = true)
             try {
