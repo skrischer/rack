@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run src",
     "verify": "npm run lint && npm run typecheck && npm run test",
     "build": "tsc -p tsconfig.json",
     "format": "prettier --check ."
