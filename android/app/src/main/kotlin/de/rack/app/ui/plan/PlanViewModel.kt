@@ -81,7 +81,7 @@ sealed interface PlanUiState {
  * exercises grouped client-side into superset/circuit runs. No Supabase access
  * happens in Composables; the screen observes [uiState] and emits events only.
  *
- * It also consumes the live [RealtimeRepository.changes] stream for the
+ * It also consumes the live [RealtimeRepository.events] stream for the
  * `plans`, `plan_days`, and `plan_exercises` tables: an incoming change re-reads
  * the current plan slice (last-write-wins re-read, keeping the join semantics) and,
  * when the payload carries `source='agent'`, flags the touched row for the
