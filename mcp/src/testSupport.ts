@@ -35,6 +35,14 @@ export function randomToken(): string {
   return randomBytes(8).toString('hex');
 }
 
+/**
+ * Name prefix reserved for transient catalog fixtures a test inserts into the
+ * shared `public.exercises` table. `seedPlanTree` excludes these so a concurrent
+ * test never FK-references a fixture another test is about to delete; any test
+ * adding catalog rows MUST name them with this prefix.
+ */
+export const CATALOG_FIXTURE_PREFIX = 'ZZZ Catalog Fixture';
+
 /** Creates an email-confirmed Auth user and returns its id. */
 export async function createConfirmedUser(admin: SupabaseClient): Promise<string> {
   const email = `rack-mcp-test-${randomToken()}@example.com`;
@@ -154,6 +162,7 @@ export async function seedPlanTree(
   const exercise = await userClient
     .from('exercises')
     .select('id')
+    .not('name', 'ilike', `${CATALOG_FIXTURE_PREFIX}%`)
     .limit(1)
     .single<{ id: string }>();
   if (exercise.error !== null || exercise.data === null) {
