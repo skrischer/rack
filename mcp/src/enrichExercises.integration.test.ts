@@ -19,6 +19,7 @@ import { spawnSync } from 'node:child_process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildEnrichSql, type EnrichmentPatch } from '../../supabase/seed/enrich/transform.mjs';
+import { CATALOG_FIXTURE_PREFIX } from './testSupport.js';
 
 const PSQL = (
   process.env.RACK_PSQL ?? 'docker exec -i supabase_db_rack psql -U postgres -d postgres'
@@ -43,8 +44,9 @@ function sqlString(value: string): string {
 }
 
 const suffix = Math.random().toString(16).slice(2, 10);
-const wgerName = `ITest Wger ${suffix}`;
-const fedName = `ITest Fed ${suffix}`;
+// Reserved prefix so seedPlanTree never samples these transient fixtures.
+const wgerName = `${CATALOG_FIXTURE_PREFIX} Wger ${suffix}`;
+const fedName = `${CATALOG_FIXTURE_PREFIX} Fed ${suffix}`;
 
 beforeAll(() => {
   // Insert fixture catalog rows as the DB owner (the seed/enrichment privilege),
@@ -57,18 +59,10 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  // Another parallel test's seedPlanTree may have picked a fixture row via an
-  // unordered limit(1) and created a plan_exercises FK to it. Remove only the
-  // rows that reference THESE fixtures (and their set_logs) before deleting the
-  // fixtures, so teardown never touches unrelated catalog or user data.
-  const fixtureIds = `(select id from public.exercises where name in (${sqlString(
-    wgerName,
-  )}, ${sqlString(fedName)}))`;
+  // seedPlanTree excludes the CATALOG_FIXTURE_PREFIX, so no concurrent test can
+  // FK-reference these fixtures; deleting the rows is enough.
   runSql(
-    `delete from public.set_logs where plan_exercise_id in
-       (select id from public.plan_exercises where exercise_id in ${fixtureIds});
-     delete from public.plan_exercises where exercise_id in ${fixtureIds};
-     delete from public.exercises where name in (${sqlString(wgerName)}, ${sqlString(fedName)});`,
+    `delete from public.exercises where name in (${sqlString(wgerName)}, ${sqlString(fedName)});`,
   );
 });
 
