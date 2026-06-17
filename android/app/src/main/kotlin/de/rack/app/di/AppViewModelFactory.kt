@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import de.rack.app.timer.TimerService
 import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
@@ -39,7 +40,13 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
                 container.appLifecycleObserver,
             )
         }
-        initializer { TimerViewModel() }
+        initializer {
+            TimerViewModel(
+                controller = container.timerController,
+                onSessionStart = { TimerService.start(container.appContext) },
+                onSessionStop = { TimerService.stop(container.appContext) },
+            )
+        }
     }
 
 /**

@@ -10,6 +10,7 @@ import de.rack.app.data.ExerciseRepository
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.SupabaseClientProvider
+import de.rack.app.data.TimerController
 import de.rack.app.data.TrainingRepository
 import de.rack.app.data.local.RackDatabase
 import io.github.jan.supabase.SupabaseClient
@@ -24,7 +25,7 @@ import io.github.jan.supabase.SupabaseClient
 class AppContainer(
     context: Context,
 ) {
-    private val appContext = context.applicationContext
+    val appContext: Context = context.applicationContext
 
     val supabaseClient: SupabaseClient by lazy { SupabaseClientProvider.create() }
 
@@ -47,6 +48,10 @@ class AppContainer(
     val trainingRepository: TrainingRepository by lazy { TrainingRepository(supabaseClient) }
 
     val realtimeRepository: RealtimeRepository by lazy { RealtimeRepository(supabaseClient) }
+
+    // Process-wide host of the Phase-8 rest + session timers; shared by the
+    // foreground TimerService and the TimerViewModel so both read one source of truth.
+    val timerController: TimerController by lazy { TimerController() }
 
     val loggingRepository: LoggingRepository by lazy {
         LoggingRepository(trainingRepository, database.pendingLogDao())

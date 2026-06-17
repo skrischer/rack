@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Rack</string>
+
+    <!-- Phase 8 timers: foreground-service notification + rest-completion alert. -->
+    <string name="timer_channel_name">Workout timers</string>
+    <string name="timer_channel_description">Rest countdown and session timer with completion alert</string>
+    <string name="timer_session_elapsed">Session %1$s</string>
+    <string name="timer_rest_remaining">Rest %1$s</string>
+    <string name="timer_no_rest">No rest running</string>
+    <string name="timer_rest_done_title">Rest done</string>
+    <string name="timer_action_add">+15s</string>
+    <string name="timer_action_subtract">-15s</string>
+    <string name="timer_action_skip">Skip</string>
+    <string name="timer_action_restart">Restart</string>
+    <string name="timer_notification_rationale">Allow notifications so the rest timer can alert you and the session timer stays visible while the app is in the background. Timers still run and vibrate if you decline.</string>
+    <string name="timer_notification_rationale_title">Enable timer notifications</string>
+    <string name="timer_permission_allow">Allow</string>
+    <string name="timer_permission_not_now">Not now</string>
 </resources>
