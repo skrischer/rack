@@ -1,5 +1,6 @@
 package de.rack.app.ui.plan
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.rack.app.data.TrainingRepository
@@ -34,6 +35,17 @@ data class PlanContent(
     val plans: List<Plan>,
     val selectedPlanId: String,
     val days: List<DayContent>,
+)
+
+/**
+ * The plan-screen actions, bundled so the screen takes one parameter for plan
+ * selection, retry, and sign-out instead of three separate lambdas.
+ */
+@Immutable
+data class PlanActions(
+    val onSelectPlan: (String) -> Unit,
+    val onRetry: () -> Unit,
+    val onSignOut: () -> Unit,
 )
 
 /** Plan-view UI state observed by the screen: loading, content, or error. */

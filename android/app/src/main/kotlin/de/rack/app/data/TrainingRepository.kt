@@ -1,10 +1,12 @@
 package de.rack.app.data
 
+import de.rack.app.domain.PendingLog
 import de.rack.app.domain.Plan
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
@@ -58,6 +60,33 @@ class TrainingRepository(
             }
             .decodeList<SetLogDto>()
             .map(SetLogDto::toDomain)
+
+    /** The signed-in user's id, or `null` when no session is restored. */
+    fun currentUserId(): String? = client.auth.currentUserOrNull()?.id
+
+    /**
+     * Upsert [log] into `set_logs` with `source='app'`. Idempotent: a retry of the
+     * same client-generated `id` updates the same row rather than duplicating it.
+     * Returns the persisted [SetLog] so the optimistic history entry reconciles.
+     */
+    suspend fun upsertSetLog(log: PendingLog): SetLog =
+        client.from("set_logs")
+            .upsert(
+                SetLogInsertDto(
+                    id = log.id,
+                    userId = log.userId,
+                    planExerciseId = log.planExerciseId,
+                    date = log.date,
+                    weight = log.weight,
+                    reps = log.reps,
+                    rir = log.rir,
+                    loggedAt = log.loggedAt,
+                ),
+            ) {
+                select(Columns.list("id", "plan_exercise_id", "date", "weight", "reps", "rir", "logged_at"))
+            }
+            .decodeSingle<SetLogDto>()
+            .toDomain()
 
     private companion object {
         // Explicit columns plus the embedded `exercises(name)` join (Postgrest

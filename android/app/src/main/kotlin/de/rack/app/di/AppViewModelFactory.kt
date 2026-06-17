@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.rack.app.ui.auth.AuthViewModel
+import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
 
 /**
@@ -15,4 +16,11 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
     viewModelFactory {
         initializer { AuthViewModel(container.authRepository) }
         initializer { PlanViewModel(container.trainingRepository) }
+        initializer {
+            LoggingViewModel(
+                container.trainingRepository,
+                container.loggingRepository,
+                container.connectivityObserver,
+            )
+        }
     }

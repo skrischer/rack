@@ -20,6 +20,10 @@ import de.rack.app.di.appViewModelFactory
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
+import de.rack.app.ui.logging.LoggingHandlers
+import de.rack.app.ui.logging.LoggingSection
+import de.rack.app.ui.logging.LoggingViewModel
+import de.rack.app.ui.plan.PlanActions
 import de.rack.app.ui.plan.PlanScreen
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.theme.RecompTheme
@@ -61,13 +65,31 @@ private fun SignedInNavHost(
 ) {
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
         composable(RackDestinations.PLAN) {
-            val planViewModel: PlanViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
+            val factory = appViewModelFactory(LocalAppContainer.current)
+            val planViewModel: PlanViewModel = viewModel(factory = factory)
+            val loggingViewModel: LoggingViewModel = viewModel(factory = factory)
             val planState by planViewModel.uiState.collectAsStateWithLifecycle()
+            val loggingState by loggingViewModel.uiState.collectAsStateWithLifecycle()
             PlanScreen(
                 state = planState,
-                onSelectPlan = planViewModel::selectPlan,
-                onRetry = planViewModel::load,
-                onSignOut = onSignOut,
+                logging =
+                    LoggingSection(
+                        state = loggingState,
+                        handlers =
+                            LoggingHandlers(
+                                prepare = loggingViewModel::prepare,
+                                onWeightChange = loggingViewModel::onWeightChange,
+                                onRepChange = loggingViewModel::onRepChange,
+                                onToggleHistory = loggingViewModel::toggleHistory,
+                                onLog = loggingViewModel::log,
+                            ),
+                    ),
+                actions =
+                    PlanActions(
+                        onSelectPlan = planViewModel::selectPlan,
+                        onRetry = planViewModel::load,
+                        onSignOut = onSignOut,
+                    ),
             )
         }
     }
