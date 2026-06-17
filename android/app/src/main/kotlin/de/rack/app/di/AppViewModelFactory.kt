@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import de.rack.app.ui.auth.AuthViewModel
+import de.rack.app.ui.plan.PlanViewModel
 
 /**
  * Manual ViewModel factory wiring the container's repositories into ViewModels —
@@ -13,4 +14,5 @@ import de.rack.app.ui.auth.AuthViewModel
 fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
     viewModelFactory {
         initializer { AuthViewModel(container.authRepository) }
+        initializer { PlanViewModel(container.trainingRepository) }
     }
