@@ -28,4 +28,13 @@ object RackDestinations {
 
     /** Builds a concrete detail route for the given catalog exercise id. */
     fun exerciseDetailRoute(exerciseId: String): String = "exercise/$exerciseId"
+
+    /** Navigation argument carrying the plan day id into the guided session player. */
+    const val SESSION_DAY_ID_ARG = "dayId"
+
+    /** Session-player route template; [sessionRoute] fills in a concrete plan day id. */
+    const val SESSION = "session/{$SESSION_DAY_ID_ARG}"
+
+    /** Builds a concrete session-player route for the given plan day id. */
+    fun sessionRoute(dayId: String): String = "session/$dayId"
 }

@@ -55,6 +55,7 @@ fun PlanScreen(
                         logging = logging,
                         onSelectPlan = actions.onSelectPlan,
                         onOpenExercise = actions.onOpenExercise,
+                        onStartSession = actions.onStartSession,
                     )
             }
         }
@@ -67,6 +68,7 @@ private fun PlanContentPane(
     logging: LoggingSection,
     onSelectPlan: (String) -> Unit,
     onOpenExercise: (String) -> Unit,
+    onStartSession: (String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
     LazyColumn(
@@ -86,7 +88,7 @@ private fun PlanContentPane(
                 dayContent = dayContent,
                 logging = logging,
                 highlightedIds = content.highlightedIds,
-                onOpenExercise = onOpenExercise,
+                actions = DayCardActions(onOpenExercise = onOpenExercise, onStartSession = onStartSession),
             )
         }
     }

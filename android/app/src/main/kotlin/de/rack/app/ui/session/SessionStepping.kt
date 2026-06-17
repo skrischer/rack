@@ -65,4 +65,7 @@ private fun step(
         kind = kind,
         setIndex = setIndex,
         totalSets = totalSets,
+        target = exercise.target,
+        rir = exercise.rir,
+        cue = exercise.cue,
     )

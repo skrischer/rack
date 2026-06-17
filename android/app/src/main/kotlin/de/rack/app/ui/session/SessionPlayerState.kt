@@ -7,8 +7,10 @@ import de.rack.app.ui.theme.SupersetKind
  * order the player walks through them. [setIndex] is 0-based within the exercise
  * (not the session); [totalSets] is the exercise's target set count so the UI can
  * show "set N of M". [kind] carries the exercise's group role so the player can
- * render the superset/circuit rotation cue. Derived from the position-ordered
- * `plan_exercises`; not stored.
+ * render the superset/circuit rotation cue. [target], [rir], and [cue] are the same
+ * read-only plan-display data the static day view shows, surfaced here so the player
+ * reuses the Phase 3/Phase 7 display data instead of re-reading it. Derived from the
+ * position-ordered `plan_exercises`; not stored.
  */
 data class SessionStep(
     val planExerciseId: String,
@@ -17,6 +19,9 @@ data class SessionStep(
     val kind: SupersetKind,
     val setIndex: Int,
     val totalSets: Int,
+    val target: String? = null,
+    val rir: Int? = null,
+    val cue: String? = null,
 )
 
 /**
@@ -41,20 +46,38 @@ data class ExerciseEntries(
 /**
  * The session player's observable state: the [focused] step (the exercise + set in
  * focus), the [remaining] steps still to tick after it (in player order), the
- * already-[done] steps, and the per-exercise working [entries] keyed by
- * `plan_exercise_id`. When [focused] is null every step has been ticked and the
- * session is ready for its summary. All stepping/rotation lives in the ViewModel;
- * the screen renders this state and emits events only.
+ * already-[done] steps, the per-exercise working [entries] keyed by
+ * `plan_exercise_id`, and the per-exercise last-logged [references] (the "last time"
+ * summary line) shown for the focused exercise. When [focused] is null every step has
+ * been ticked and the session is ready for its summary. All stepping/rotation lives in
+ * the ViewModel; the screen renders this state and emits events only.
  */
 data class SessionPlayerUiState(
     val focused: SessionStep? = null,
     val remaining: List<SessionStep> = emptyList(),
     val done: List<SessionStep> = emptyList(),
     val entries: Map<String, ExerciseEntries> = emptyMap(),
+    val references: Map<String, String> = emptyMap(),
 ) {
     /** True once the last step has been ticked and no step remains in focus. */
     val isFinished: Boolean get() = focused == null
 
     /** The working entries for [planExerciseId], or empty defaults if untouched. */
     fun entriesFor(planExerciseId: String): ExerciseEntries = entries[planExerciseId] ?: ExerciseEntries()
+
+    /** The "last time" reference summary for [planExerciseId], or null if none logged. */
+    fun referenceFor(planExerciseId: String): String? = references[planExerciseId]
+
+    /**
+     * The name of the exercise the player rotates to next within the focused step's
+     * superset/circuit group, shown as the "Next: <exercise>" cue. Null for a
+     * standalone exercise or when the next remaining step is the same exercise (the
+     * round has not rotated yet), so the cue appears only for an actual hand-off.
+     */
+    val rotationCueName: String?
+        get() {
+            val current = focused?.takeIf { it.kind != SupersetKind.NONE } ?: return null
+            val next = remaining.firstOrNull() ?: return null
+            return next.name.takeIf { next.planExerciseId != current.planExerciseId }
+        }
 }

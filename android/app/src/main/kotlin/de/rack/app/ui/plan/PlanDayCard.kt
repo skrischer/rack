@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +40,7 @@ fun DayCard(
     dayContent: DayContent,
     logging: LoggingSection,
     highlightedIds: Set<String>,
-    onOpenExercise: (String) -> Unit,
+    actions: DayCardActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
@@ -50,7 +51,11 @@ fun DayCard(
                 .background(colors.panel, RecompTheme.shapes.xl)
                 .border(RecompTheme.spacing.border, colors.line, RecompTheme.shapes.xl),
     ) {
-        DayHead(day = dayContent.day, highlighted = dayContent.day.id in highlightedIds)
+        DayHead(
+            day = dayContent.day,
+            highlighted = dayContent.day.id in highlightedIds,
+            onStartSession = { actions.onStartSession(dayContent.day.id) },
+        )
         dayContent.groups.forEach { group ->
             if (group.kind != SupersetKind.NONE) {
                 SupersetHeader(kind = group.kind)
@@ -61,17 +66,29 @@ fun DayCard(
                     grouped = group.kind != SupersetKind.NONE,
                     logging = logging,
                     highlighted = exercise.id in highlightedIds,
-                    onOpenExercise = onOpenExercise,
+                    onOpenExercise = actions.onOpenExercise,
                 )
             }
         }
     }
 }
 
+/**
+ * The day-card navigation callbacks, bundled so the card takes one parameter: opening a
+ * tapped exercise's detail (by catalog exercise id) and starting a guided session for
+ * the day (by `plan_day_id`).
+ */
+@Immutable
+data class DayCardActions(
+    val onOpenExercise: (String) -> Unit,
+    val onStartSession: (String) -> Unit,
+)
+
 @Composable
 private fun DayHead(
     day: PlanDay,
     highlighted: Boolean,
+    onStartSession: () -> Unit,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
@@ -93,13 +110,32 @@ private fun DayHead(
             Text(text = dayNumber(day.position), style = type.loadValue, color = colors.bg)
         }
         Spacer(Modifier.width(spacing.md))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(text = (day.title ?: "DAY").uppercase(), style = type.dayTitle, color = colors.txt)
             day.focus?.takeIf { it.isNotBlank() }?.let { focus ->
                 Text(text = focus.uppercase(), style = type.label, color = colors.dim)
             }
         }
+        Spacer(Modifier.width(spacing.md))
+        StartSessionButton(onClick = onStartSession)
     }
+}
+
+@Composable
+private fun StartSessionButton(onClick: () -> Unit) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val spacing = RecompTheme.spacing
+    Text(
+        text = "START",
+        style = type.label,
+        color = colors.bg,
+        modifier =
+            Modifier
+                .background(colors.volt, RecompTheme.shapes.md)
+                .clickable(onClick = onClick)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+    )
 }
 
 @Composable
