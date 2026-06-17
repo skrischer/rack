@@ -49,6 +49,7 @@ fun ArtifactScreen(
                         artifacts = state.artifacts,
                         isRefreshing = isRefreshing,
                         onRefresh = actions.onRefresh,
+                        onOpen = actions.onOpen,
                     )
             }
         }
@@ -61,6 +62,7 @@ private fun ArtifactListPane(
     artifacts: List<Artifact>,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
+    onOpen: (String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
     PullToRefreshBox(
@@ -77,14 +79,19 @@ private fun ArtifactListPane(
             if (artifacts.isEmpty()) {
                 item { EmptyState() }
             } else {
-                items(artifacts, key = { it.id }) { artifact -> ArtifactRow(artifact = artifact) }
+                items(artifacts, key = { it.id }) { artifact ->
+                    ArtifactRow(artifact = artifact, onOpen = onOpen)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ArtifactRow(artifact: Artifact) {
+private fun ArtifactRow(
+    artifact: Artifact,
+    onOpen: (String) -> Unit,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -94,6 +101,7 @@ private fun ArtifactRow(artifact: Artifact) {
                 .fillMaxWidth()
                 .background(colors.panel, RecompTheme.shapes.xl)
                 .border(spacing.border, colors.line, RecompTheme.shapes.xl)
+                .clickable { onOpen(artifact.id) }
                 .padding(spacing.cardInsetH),
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {

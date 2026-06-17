@@ -1,5 +1,6 @@
 package de.rack.app.ui
 
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,17 +10,24 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import de.rack.app.di.AppContainer
 import de.rack.app.di.appViewModelFactory
+import de.rack.app.di.artifactViewerViewModelFactory
 import de.rack.app.ui.artifacts.ArtifactActions
 import de.rack.app.ui.artifacts.ArtifactScreen
 import de.rack.app.ui.artifacts.ArtifactViewModel
+import de.rack.app.ui.artifacts.ArtifactViewerScreen
+import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
@@ -105,13 +113,26 @@ private fun SignedInNavHost(
             KeysRoute(onBack = { navController.popBackStack() })
         }
         composable(RackDestinations.ARTIFACTS) {
-            ArtifactsRoute(onBack = { navController.popBackStack() })
+            ArtifactsRoute(
+                onOpen = { id -> navController.navigate(RackDestinations.artifactViewerRoute(id)) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = RackDestinations.ARTIFACT_VIEWER,
+            arguments = listOf(navArgument(RackDestinations.ARTIFACT_ID_ARG) { type = NavType.StringType }),
+        ) { entry ->
+            val artifactId = entry.arguments?.getString(RackDestinations.ARTIFACT_ID_ARG).orEmpty()
+            ArtifactViewerRoute(artifactId = artifactId, onBack = { navController.popBackStack() })
         }
     }
 }
 
 @Composable
-private fun ArtifactsRoute(onBack: () -> Unit) {
+private fun ArtifactsRoute(
+    onOpen: (String) -> Unit,
+    onBack: () -> Unit,
+) {
     val viewModel: ArtifactViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
@@ -122,10 +143,26 @@ private fun ArtifactsRoute(onBack: () -> Unit) {
             ArtifactActions(
                 onRefresh = viewModel::refresh,
                 onRetry = viewModel::load,
+                onOpen = onOpen,
                 onBack = onBack,
             ),
     )
 }
+
+@Composable
+private fun ArtifactViewerRoute(
+    artifactId: String,
+    onBack: () -> Unit,
+) {
+    val factory = artifactViewerViewModelFactory(LocalAppContainer.current, artifactId, ::decodePng)
+    val viewModel: ArtifactViewerViewModel = viewModel(key = artifactId, factory = factory)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    ArtifactViewerScreen(state = uiState, onRetry = viewModel::load, onBack = onBack)
+}
+
+/** Decode PNG bytes into a Compose [ImageBitmap]; null when the bytes are not a valid bitmap. */
+private fun decodePng(bytes: ByteArray): ImageBitmap? =
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 
 @Composable
 private fun KeysRoute(onBack: () -> Unit) {
