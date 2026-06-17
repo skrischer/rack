@@ -77,6 +77,10 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    // ProcessLifecycleOwner: drives the foreground/background signal that binds the
+    // per-user Realtime subscription to the app lifecycle (subscribe on foreground,
+    // unsubscribe on background, reconnect + re-sync on return).
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // Single shared SupabaseClient (Auth + Postgrest + Realtime + Storage).

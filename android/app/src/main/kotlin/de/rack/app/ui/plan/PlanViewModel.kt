@@ -3,20 +3,22 @@ package de.rack.app.ui.plan
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.TrainingRepository
+import de.rack.app.data.whileForeground
 import de.rack.app.domain.HighlightTracker
 import de.rack.app.domain.Plan
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.RealtimeChange
+import de.rack.app.domain.RealtimeEvent
 import de.rack.app.domain.SOURCE_AGENT
 import de.rack.app.domain.SyncedTable
 import de.rack.app.ui.theme.SupersetKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 /**
@@ -84,10 +86,18 @@ sealed interface PlanUiState {
  * the current plan slice (last-write-wins re-read, keeping the join semantics) and,
  * when the payload carries `source='agent'`, flags the touched row for the
  * transient highlight via the [HighlightTracker] (3 s fade owned in that layer).
+ *
+ * The single live collection is bound to the app lifecycle
+ * ([AppLifecycleObserver.whileForeground]): the channel subscribes on foreground and
+ * unsubscribes on background, reconnecting on return. Each (re)subscribe carries a
+ * [RealtimeEvent.Resync] and this VM re-reads the current plan slice, so an agent
+ * change made while disconnected is reflected after re-sync (reconciled as current
+ * state, not highlighted).
  */
 class PlanViewModel(
     private val repository: TrainingRepository,
     realtime: RealtimeRepository,
+    lifecycle: AppLifecycleObserver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<PlanUiState>(PlanUiState.Loading)
     val uiState: StateFlow<PlanUiState> = _uiState.asStateFlow()
@@ -97,7 +107,12 @@ class PlanViewModel(
     init {
         load()
         viewModelScope.launch {
-            realtime.changes().filter { it.table in PLAN_TABLES }.collect(::reconcileRealtime)
+            lifecycle.whileForeground(realtime::events).collect { event ->
+                when (event) {
+                    RealtimeEvent.Resync -> resyncPlan()
+                    is RealtimeEvent.Row -> event.change.takeIf { it.table in PLAN_TABLES }?.let(::reconcileRealtime)
+                }
+            }
         }
         viewModelScope.launch {
             highlights.highlighted.collect(::projectHighlights)
@@ -169,6 +184,21 @@ class PlanViewModel(
                 val plans = if (change.table == SyncedTable.PLANS) repository.getPlans() else current.plans
                 setDays(plans, current.selectedPlanId, highlights.highlighted.value)
             }.onFailure { /* keep the last good content; the next change re-reads */ }
+        }
+    }
+
+    /**
+     * Catch-up re-read on every (re)subscribe: re-read the plan list and the current
+     * plan's days so an agent change made while disconnected is reflected. The
+     * re-read reconciles as current state and is not highlighted — only a live row
+     * payload carrying `source='agent'` flags a highlight. No content yet (still
+     * loading) needs no re-sync; the initial [load] covers that case.
+     */
+    private fun resyncPlan() {
+        val current = (_uiState.value as? PlanUiState.Content)?.content ?: return
+        viewModelScope.launch {
+            runCatching { setDays(repository.getPlans(), current.selectedPlanId, highlights.highlighted.value) }
+                .onFailure { /* keep the last good content; the next resync re-reads */ }
         }
     }
 
