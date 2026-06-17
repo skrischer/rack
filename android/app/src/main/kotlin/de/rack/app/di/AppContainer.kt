@@ -1,6 +1,7 @@
 package de.rack.app.di
 
 import android.content.Context
+import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.AuthRepository
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
@@ -27,6 +28,10 @@ class AppContainer(
     private val database: RackDatabase by lazy { RackDatabase.create(appContext) }
 
     val connectivityObserver: ConnectivityObserver by lazy { ConnectivityObserver(appContext) }
+
+    // Eager: registers on ProcessLifecycleOwner at app start (main thread) so the
+    // foreground signal is live before any screen subscribes to Realtime.
+    val appLifecycleObserver: AppLifecycleObserver = AppLifecycleObserver()
 
     val authRepository: AuthRepository by lazy { AuthRepository(supabaseClient) }
 

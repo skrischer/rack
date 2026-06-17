@@ -15,13 +15,20 @@ import de.rack.app.ui.plan.PlanViewModel
 fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
     viewModelFactory {
         initializer { AuthViewModel(container.authRepository) }
-        initializer { PlanViewModel(container.trainingRepository, container.realtimeRepository) }
+        initializer {
+            PlanViewModel(
+                container.trainingRepository,
+                container.realtimeRepository,
+                container.appLifecycleObserver,
+            )
+        }
         initializer {
             LoggingViewModel(
                 container.trainingRepository,
                 container.loggingRepository,
                 container.realtimeRepository,
                 container.connectivityObserver,
+                container.appLifecycleObserver,
             )
         }
     }

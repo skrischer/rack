@@ -2,13 +2,16 @@ package de.rack.app.ui.logging
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.TrainingRepository
+import de.rack.app.data.whileForeground
 import de.rack.app.domain.HighlightTracker
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.SetLogChange
+import de.rack.app.domain.SetLogEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,18 +25,26 @@ import kotlinx.coroutines.launch
  * through the [LoggingRepository], reconciled with the persisted row. Unsynced
  * logs are flushed on reconnect (ConnectivityManager) and on foreground/login.
  *
- * It also reconciles the live [RealtimeRepository.setLogChanges] stream into the
+ * It also reconciles the live [RealtimeRepository.setLogEvents] stream into the
  * same history by primary key (last-write-wins): the app's own `source='app'`
  * echo updates the row in place without duplicating it or highlighting it, while
  * an agent edit (`source='agent'`) flags the row for the transient highlight #28
  * renders. No Supabase access or business logic lives in Composables — the screen
  * observes [uiState] and emits events only.
+ *
+ * The single live collection is bound to the app lifecycle
+ * ([AppLifecycleObserver.whileForeground]): the channel subscribes on foreground and
+ * unsubscribes on background (no leaked socket), reconnecting on return. Each
+ * (re)subscribe carries a [SetLogEvent.Resync] and this VM re-reads each on-screen
+ * exercise's history, so an agent change made while disconnected is reflected after
+ * re-sync (reconciled as current state, not highlighted).
  */
 class LoggingViewModel(
     private val training: TrainingRepository,
     private val logging: LoggingRepository,
-    realtime: RealtimeRepository,
+    private val realtime: RealtimeRepository,
     connectivity: ConnectivityObserver,
+    lifecycle: AppLifecycleObserver,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LoggingUiState())
     val uiState: StateFlow<LoggingUiState> = _uiState.asStateFlow()
@@ -45,7 +56,16 @@ class LoggingViewModel(
             connectivity.onAvailable().collect { flushPending() }
         }
         viewModelScope.launch {
-            realtime.setLogChanges().collect(::reconcileRealtime)
+            lifecycle.whileForeground(realtime::setLogEvents).collect { event ->
+                when (event) {
+                    // Catch-up re-read on every (re)subscribe: re-read each on-screen
+                    // exercise's server history so an agent change made while
+                    // disconnected is reflected, reconciled as current state (not
+                    // highlighted). The live highlight is a same-session cue only.
+                    SetLogEvent.Resync -> _uiState.value.byExercise.keys.forEach(::loadHistory)
+                    is SetLogEvent.Change -> reconcileRealtime(event.change)
+                }
+            }
         }
         viewModelScope.launch {
             highlights.highlighted.collect { ids ->
