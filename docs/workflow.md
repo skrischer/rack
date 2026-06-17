@@ -52,7 +52,10 @@ truth, milestones and issues are created on GitHub from them.
   Android dependencies resolve on the first Gradle build.
 - Verify: `make verify` — `(cd mcp && npm run verify)` = lint + typecheck +
   test, plus Android static checks (ktlint / detekt). Fast per-iteration gate.
-  (measured duration: `to be measured in Phase 1`)
+  (measured duration: ~3.5s warm — the per-iteration gate with deps already
+  resolved and the Gradle build cache populated; the first run after `make
+  bootstrap` was ~3.3s, as the Gradle build cache is shared globally so there
+  is no large cold penalty.)
 - Test: `none yet` — until a test command exists, every acceptance item no
   machine check covers is verified at the human milestone-QA gate.
 - Build: `make build` — full check for app-affecting changes: MCP build +
