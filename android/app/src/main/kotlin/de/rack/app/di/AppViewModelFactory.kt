@@ -11,6 +11,7 @@ import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
+import de.rack.app.ui.timer.TimerViewModel
 
 /**
  * Manual ViewModel factory wiring the container's repositories into ViewModels —
@@ -38,6 +39,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
                 container.appLifecycleObserver,
             )
         }
+        initializer { TimerViewModel() }
     }
 
 /**
