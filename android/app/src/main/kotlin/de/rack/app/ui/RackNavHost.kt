@@ -25,6 +25,7 @@ import de.rack.app.di.AppContainer
 import de.rack.app.di.appViewModelFactory
 import de.rack.app.di.artifactViewerViewModelFactory
 import de.rack.app.di.exerciseDetailViewModelFactory
+import de.rack.app.di.exerciseProgressViewModelFactory
 import de.rack.app.ui.artifacts.ArtifactActions
 import de.rack.app.ui.artifacts.ArtifactScreen
 import de.rack.app.ui.artifacts.ArtifactViewModel
@@ -35,6 +36,8 @@ import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
 import de.rack.app.ui.exercise.ExerciseDetailScreen
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
+import de.rack.app.ui.exercise.ExerciseProgressScreen
+import de.rack.app.ui.exercise.ExerciseProgressViewModel
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
@@ -115,7 +118,25 @@ private fun SignedInNavHost(
             arguments = listOf(navArgument(RackDestinations.EXERCISE_ID_ARG) { type = NavType.StringType }),
         ) { entry ->
             val exerciseId = entry.arguments?.getString(RackDestinations.EXERCISE_ID_ARG).orEmpty()
-            ExerciseDetailRoute(exerciseId = exerciseId, onBack = { navController.popBackStack() })
+            ExerciseDetailRoute(
+                exerciseId = exerciseId,
+                onBack = { navController.popBackStack() },
+                onOpenProgress = { navController.navigate(RackDestinations.exerciseProgressRoute(exerciseId)) },
+            )
+        }
+        composable(
+            route = RackDestinations.EXERCISE_PROGRESS,
+            arguments = listOf(navArgument(RackDestinations.EXERCISE_ID_ARG) { type = NavType.StringType }),
+        ) { entry ->
+            val exerciseId = entry.arguments?.getString(RackDestinations.EXERCISE_ID_ARG).orEmpty()
+            val factory = exerciseProgressViewModelFactory(LocalAppContainer.current, exerciseId)
+            val viewModel: ExerciseProgressViewModel = viewModel(key = exerciseId, factory = factory)
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            ExerciseProgressScreen(
+                state = uiState,
+                onRetry = viewModel::load,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(
             route = RackDestinations.SESSION,
@@ -243,11 +264,17 @@ private fun ArtifactViewerRoute(
 private fun ExerciseDetailRoute(
     exerciseId: String,
     onBack: () -> Unit,
+    onOpenProgress: () -> Unit,
 ) {
     val factory = exerciseDetailViewModelFactory(LocalAppContainer.current, exerciseId, ::decodePng)
     val viewModel: ExerciseDetailViewModel = viewModel(key = exerciseId, factory = factory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ExerciseDetailScreen(state = uiState, onRetry = viewModel::load, onBack = onBack)
+    ExerciseDetailScreen(
+        state = uiState,
+        onRetry = viewModel::load,
+        onBack = onBack,
+        onOpenProgress = onOpenProgress,
+    )
 }
 
 /** Decode image bytes into a Compose [ImageBitmap]; null when the bytes are not a valid bitmap. */
