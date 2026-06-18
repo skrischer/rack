@@ -2,7 +2,6 @@ package de.rack.app.ui.session
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,16 +14,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompEmpty
+import de.rack.app.ui.theme.RecompGhostButton
+import de.rack.app.ui.theme.RecompPrimaryButton
+import de.rack.app.ui.theme.RecompStat
+import de.rack.app.ui.theme.RecompStatStrip
 import de.rack.app.ui.theme.RecompTheme
 
 /**
- * The finished-session summary: per-exercise sets-done-vs-target and total volume from
- * the [summary], the session [durationSeconds] from the Phase-8 session-duration timer,
- * and the confirm-save / discard actions (docs/specs/spec-session-player.md).
- * [onConfirmSave] persists every logged exercise to `set_logs`; [onDiscard] routes to the
- * abandon confirmation (which writes nothing). Purely presentational — it renders the
- * aggregated state and forwards events.
+ * The finished-session summary: a Recomp stat strip (Dauer / Volumen / Sätze) over a card
+ * of per-exercise sets-done-vs-target and volume rows from the [summary], with the session
+ * [durationSeconds] from the Phase-8 session-duration timer and the confirm-save / discard
+ * actions (docs/specs/spec-session-player.md). [onConfirmSave] persists every logged
+ * exercise to `set_logs`; [onDiscard] routes to the abandon confirmation (which writes
+ * nothing). Purely presentational — it renders the aggregated state and forwards events.
  */
 @Composable
 internal fun SessionSummaryBody(
@@ -46,14 +50,15 @@ internal fun SessionSummaryBody(
         verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         Text(text = "SESSION COMPLETE", style = type.kicker, color = colors.volt)
-        SummaryTotals(summary = summary, durationSeconds = durationSeconds)
+        SummaryStatStrip(summary = summary, durationSeconds = durationSeconds)
         if (summary.isEmpty) {
-            Text(text = "No sets logged this session.", style = type.body, color = colors.dim)
+            RecompEmpty(text = "Keine Sätze protokolliert.")
         } else {
-            summary.lines.forEach { line -> SummaryLineRow(line = line) }
+            Text(text = "ÜBUNGEN", style = type.label, color = colors.dim)
+            SummaryExerciseCard(lines = summary.lines)
         }
         if (saveState == SessionSaveState.ERROR) SaveErrorLine()
-        SummaryButtons(
+        SummaryActions(
             isEmpty = summary.isEmpty,
             saveState = saveState,
             onConfirmSave = onConfirmSave,
@@ -63,32 +68,36 @@ internal fun SessionSummaryBody(
 }
 
 @Composable
-private fun SummaryTotals(
+private fun SummaryStatStrip(
     summary: SessionSummary,
     durationSeconds: Int,
 ) {
-    val colors = RecompTheme.colors
-    val spacing = RecompTheme.spacing
-    Row(
-        modifier = Modifier.fillMaxWidth().background(colors.panel, RecompTheme.shapes.xl).padding(spacing.lg),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        TotalCell(label = "DURATION", value = formatClock(durationSeconds))
-        TotalCell(label = "VOLUME", value = "${formatVolume(summary.totalVolume)} kg")
-    }
+    RecompStatStrip(
+        stats =
+            listOf(
+                RecompStat(value = formatSessionClock(durationSeconds), label = "Dauer"),
+                RecompStat(value = formatSessionMetric(summary.totalVolume), label = "Volumen kg"),
+                RecompStat(value = summary.lines.sumOf(SessionSummaryLine::setsDone).toString(), label = "Sätze"),
+            ),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
-private fun TotalCell(
-    label: String,
-    value: String,
-) {
+private fun SummaryExerciseCard(lines: List<SessionSummaryLine>) {
     val colors = RecompTheme.colors
-    val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
-        Text(text = label, style = type.caption, color = colors.dim)
-        Text(text = value, style = type.dayTitle, color = colors.volt)
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(colors.panel, RecompTheme.shapes.xl)
+                .border(spacing.border, colors.line, RecompTheme.shapes.xl),
+    ) {
+        lines.forEachIndexed { index, line ->
+            if (index > 0) RecompDivider()
+            SummaryLineRow(line = line)
+        }
     }
 }
 
@@ -98,33 +107,30 @@ private fun SummaryLineRow(line: SessionSummaryLine) {
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .border(spacing.border, colors.line, RecompTheme.shapes.md)
-                .padding(horizontal = spacing.lg, vertical = spacing.md),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = line.name, style = type.exerciseName, color = colors.txt)
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
-            Text(text = "${line.setsDone} / ${line.targetSets} sets", style = type.label, color = colors.volt)
-            Text(text = "${formatVolume(line.volume)} kg", style = type.lastTime, color = colors.dim)
-        }
+        Text(text = line.name, style = type.exerciseName, color = colors.txt, modifier = Modifier.weight(1f))
+        Text(
+            text = "${line.setsDone}/${line.targetSets} · ${formatSessionMetric(line.volume)} kg",
+            style = type.loadValue,
+            color = colors.dim,
+        )
     }
 }
 
 @Composable
 private fun SaveErrorLine() {
     Text(
-        text = "Could not save the session. Check your connection and try again.",
+        text = "Session konnte nicht gespeichert werden. Verbindung prüfen und erneut versuchen.",
         style = RecompTheme.typography.lastTime,
         color = RecompTheme.colors.legs,
     )
 }
 
 @Composable
-private fun SummaryButtons(
+private fun SummaryActions(
     isEmpty: Boolean,
     saveState: SessionSaveState,
     onConfirmSave: () -> Unit,
@@ -134,75 +140,18 @@ private fun SummaryButtons(
     val saving = saveState == SessionSaveState.SAVING
     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
         if (!isEmpty) {
-            PrimaryButton(
-                label = if (saving) "SAVING…" else "CONFIRM & SAVE",
-                enabled = !saving,
+            RecompPrimaryButton(
+                text = if (saving) "Speichert…" else "Speichern",
                 onClick = onConfirmSave,
+                enabled = !saving,
+                fillMaxWidth = true,
             )
         }
-        SecondaryButton(
-            label = if (isEmpty) "CLOSE" else "DISCARD SESSION",
-            enabled = !saving,
+        RecompGhostButton(
+            text = if (isEmpty) "Schließen" else "Verwerfen",
             onClick = onDiscard,
+            enabled = !saving,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
-
-@Composable
-private fun PrimaryButton(
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    val fill = if (enabled) colors.volt else colors.voltDim
-    Text(
-        text = label,
-        style = type.label,
-        color = colors.bg,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(fill, RecompTheme.shapes.md)
-                .clickable(enabled = enabled, onClick = onClick)
-                .padding(vertical = spacing.md),
-        textAlign = TextAlign.Center,
-    )
-}
-
-@Composable
-private fun SecondaryButton(
-    label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Text(
-        text = label,
-        style = type.label,
-        color = colors.dim,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .border(spacing.border, colors.line, RecompTheme.shapes.md)
-                .clickable(enabled = enabled, onClick = onClick)
-                .padding(vertical = spacing.md),
-        textAlign = TextAlign.Center,
-    )
-}
-
-private const val SECONDS_PER_MINUTE = 60
-
-/** "m:ss" clock from [totalSeconds] (clamped non-negative), matching the timer bar. */
-private fun formatClock(totalSeconds: Int): String {
-    val safe = totalSeconds.coerceAtLeast(0)
-    return "%d:%02d".format(safe / SECONDS_PER_MINUTE, safe % SECONDS_PER_MINUTE)
-}
-
-/** Volume without a trailing ".0", mirroring the logged-set weight formatting. */
-private fun formatVolume(volume: Double): String =
-    if (volume % 1.0 == 0.0) volume.toLong().toString() else volume.toString()
