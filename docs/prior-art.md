@@ -167,3 +167,15 @@
 - Notes:
   - ADOPT: compute an estimate from the heaviest logged set; present it as guidance.
   - AVOID: over-engineering (multi-formula averaging, ML) — one documented formula, labeled an estimate, is enough.
+
+## App navigation & logging-screen UX (Recomp UX Overhaul)
+
+### Strong / Hevy (de-facto UX standard) + GymRoutines / LiftLog (FOSS flow)
+
+- Path: Strong / Hevy (commercial, closed); FOSS cross-ref `com.noahjutz.gymroutines`, LiftLog
+- License: closed (Strong/Hevy); FOSS (the trackers)
+- Verdict: reference-only — UX conventions for app navigation and set/rep logging; informs the Recomp UX Overhaul living-spec.
+- Date: 2026-06-18
+- Notes:
+  - ADOPT: bottom-tab **quick-nav** for 3–5 frequent destinations with an overflow for the rest (Material-aligned); the per-exercise **set table** (`set | previous | kg | reps | ✓`) with a previous-performance column and a per-set check that auto-starts the rest timer; a **launcher** home (today/next-workout + a single Start CTA) that separates plan-overview from active-session logging.
+  - AVOID: a left burger-drawer as primary navigation (off-pattern for modern fitness apps); cramming always-open per-set inputs into the plan overview (the old `artifact.html` model); feature bloat (social feeds, marketplace).

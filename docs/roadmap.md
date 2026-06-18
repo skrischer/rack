@@ -76,6 +76,28 @@ re-prioritize):
 - **13 — Plate calculator & 1RM estimates.** A barbell plate calculator per
   target weight and a 1RM estimate from load × reps. Depends on Phase 3.
 
+## Living-spec themes
+
+> Ongoing themes (workflow.md "living-spec" track): a spec plus an open
+> milestone that accretes issues over time and is never archived.
+> Human-initiated; `/loopkit:plan` keeps the links current.
+
+| Theme | Spec | Milestone |
+|---|---|---|
+| Recomp UX Overhaul | — | — |
+
+- **Recomp UX Overhaul.** Bring every app surface up to the refreshed Recomp
+  design language prepared in `docs/design/` (a mirror of the Claude Design
+  project): the Strong/Hevy **launcher** model for Plan/Home (today-hero + Start
+  CTA + compact plan list), **set-table** logging in the session player
+  (`Satz | Vorher | kg | Wdh | RIR | ✓`, a previous-performance column, a per-set
+  check that auto-starts the rest timer), a pull-up **bottom-nav dock** with an
+  off-canvas overflow (quick-nav tiles in the first row, all other links as full
+  rows below), and an end-to-end polish pass (spacing, empty/loading/error
+  states, motion) across all screens. Living-spec: per-screen / per-pattern
+  issues on an open milestone, not archived. Depends on Phase 3 and the relevant
+  feature phase per screen.
+
 ## North star
 
 Every phase moves toward the loop where the user's own agent writes training
