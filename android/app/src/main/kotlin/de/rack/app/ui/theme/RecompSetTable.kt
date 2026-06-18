@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // Kit `.settbl` column geometry — fixed metric columns with a flexible "Vorher" column.
-private val ColSetNo = 34.dp
+private val ColSetNo = 30.dp
 private val ColMetric = 56.dp
 private val ColRir = 48.dp
 private val ColCheck = 40.dp
@@ -139,21 +139,9 @@ private fun SetTableRow(
         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             Text(text = row.previous ?: "—", style = type.lastTime, color = colors.dim, textAlign = TextAlign.Center)
         }
-        MetricCell(width = ColMetric, value = row.weight, done = row.done, placeholder = "") {
-            callbacks.onWeightChange(index, it)
-        }
-        MetricCell(
-            width = ColMetric,
-            value = row.reps,
-            done = row.done,
-            placeholder = ""
-        ) { callbacks.onRepsChange(index, it) }
-        MetricCell(
-            width = ColRir,
-            value = row.rir,
-            done = row.done,
-            placeholder = ""
-        ) { callbacks.onRirChange(index, it) }
+        MetricCell(width = ColMetric, value = row.weight, done = row.done) { callbacks.onWeightChange(index, it) }
+        MetricCell(width = ColMetric, value = row.reps, done = row.done) { callbacks.onRepsChange(index, it) }
+        MetricCell(width = ColRir, value = row.rir, done = row.done) { callbacks.onRirChange(index, it) }
         FixedCell(width = ColCheck, align = Alignment.Center) {
             RecompSetCheck(checked = row.done, onClick = { callbacks.onToggleDone(index) })
         }
@@ -165,7 +153,6 @@ private fun MetricCell(
     width: Dp,
     value: String,
     done: Boolean,
-    placeholder: String,
     onValueChange: (String) -> Unit,
 ) {
     val type = RecompTheme.typography
@@ -175,10 +162,10 @@ private fun MetricCell(
             Text(
                 text = value.ifEmpty { "–" },
                 style = type.loadValue.copy(fontWeight = FontWeight.Normal),
-                color = colors.txt
+                color = colors.txt,
             )
         } else {
-            RecompCellInput(value = value, onValueChange = onValueChange, placeholder = placeholder)
+            RecompCellInput(value = value, onValueChange = onValueChange)
         }
     }
 }

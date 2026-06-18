@@ -9,7 +9,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.style.TextAlign
+
+// Dimming applied to a disabled button so its inert state reads visually (Material disabled alpha).
+private const val DISABLED_ALPHA = 0.38f
 
 /**
  * The primary Recomp call-to-action (kit `.btn`): a solid volt fill with [RecompColors.bg]
@@ -34,6 +38,7 @@ fun RecompPrimaryButton(
         modifier =
             modifier
                 .then(width)
+                .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .recompPress(onClick = onClick, enabled = enabled)
                 .background(colors.volt, RecompTheme.shapes.md)
                 .padding(horizontal = spacing.lg, vertical = spacing.md),
@@ -66,6 +71,7 @@ fun RecompGhostButton(
     Box(
         modifier =
             modifier
+                .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .recompPress(onClick = onClick, enabled = enabled)
                 .border(spacing.border, colors.line, RecompTheme.shapes.sm)
                 .padding(horizontal = spacing.md, vertical = spacing.sm),

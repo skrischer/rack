@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.sp
 
 private val NavHandleWidth = 40.dp
 private val NavHandleHeight = 4.dp
+
+// Kit `.sheet .grip` is a touch narrower (38px) than the dock's `.nav-handle` (40px).
+private val SheetGripWidth = 38.dp
 private val AvatarSize = 20.dp
 private val SheetCorner = 18.dp
 private val NavLabelSize = 9.5.sp
@@ -134,7 +137,7 @@ fun RecompOverflowSheet(
             Box(
                 modifier =
                     Modifier
-                        .width(NavHandleWidth)
+                        .width(SheetGripWidth)
                         .height(NavHandleHeight)
                         .background(colors.line, HandleShape),
             )

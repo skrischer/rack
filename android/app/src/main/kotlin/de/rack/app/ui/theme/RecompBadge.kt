@@ -10,8 +10,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 
 private val BadgePillShape = RoundedCornerShape(percent = 50)
-private const val BORDER_ALPHA = 0.38f
-private const val FILL_ALPHA = 0.07f
+
+// Per-style border/fill alphas, matching the kit's rgba() badge accents verbatim
+// (kit.css `.badge.volt` .35/.06, `.badge.agent` .40/.08, `.badge.legs` border .40).
+private const val VOLT_BORDER_ALPHA = 0.35f
+private const val VOLT_FILL_ALPHA = 0.06f
+private const val AGENT_BORDER_ALPHA = 0.40f
+private const val AGENT_FILL_ALPHA = 0.08f
+private const val LEGS_BORDER_ALPHA = 0.40f
 
 /**
  * The badge accents from the Recomp kit (`.badge` + `.volt` / `.agent` / `.legs`). Each
@@ -72,13 +78,17 @@ private fun badgeAccent(
         RecompBadgeStyle.Neutral ->
             BadgeAccent(colors.dim, colors.line, Color.Transparent)
         RecompBadgeStyle.Volt ->
-            BadgeAccent(colors.volt, colors.volt.copy(alpha = BORDER_ALPHA), colors.volt.copy(alpha = FILL_ALPHA))
+            BadgeAccent(
+                colors.volt,
+                colors.volt.copy(alpha = VOLT_BORDER_ALPHA),
+                colors.volt.copy(alpha = VOLT_FILL_ALPHA)
+            )
         RecompBadgeStyle.Agent ->
             BadgeAccent(
                 colors.superset,
-                colors.superset.copy(alpha = BORDER_ALPHA),
-                colors.superset.copy(alpha = FILL_ALPHA)
+                colors.superset.copy(alpha = AGENT_BORDER_ALPHA),
+                colors.superset.copy(alpha = AGENT_FILL_ALPHA),
             )
         RecompBadgeStyle.Legs ->
-            BadgeAccent(colors.legs, colors.legs.copy(alpha = BORDER_ALPHA), Color.Transparent)
+            BadgeAccent(colors.legs, colors.legs.copy(alpha = LEGS_BORDER_ALPHA), Color.Transparent)
     }
