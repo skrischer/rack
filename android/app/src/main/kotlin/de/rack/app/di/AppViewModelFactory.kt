@@ -16,6 +16,7 @@ import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.session.SessionPlayerViewModel
+import de.rack.app.ui.settings.SettingsViewModel
 import de.rack.app.ui.timer.TimerViewModel
 import java.time.LocalDate
 
@@ -30,6 +31,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
         initializer { ApiKeyViewModel(container.apiKeyRepository) }
         initializer { ArtifactViewModel(container.artifactRepository) }
         initializer { HomeViewModel(container.dashboardRepository) }
+        initializer { SettingsViewModel(container.settingsRepository) }
         initializer {
             PlanViewModel(
                 container.trainingRepository,
