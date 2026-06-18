@@ -8,17 +8,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompEmpty
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
 import de.rack.app.ui.theme.RecompTheme
 import java.time.LocalDate
 import java.time.YearMonth
@@ -42,9 +46,15 @@ fun CalendarHistoryScreen(
         CalendarTopBar(onBack = actions.onBack)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is CalendarUiState.Loading -> CenterSpinner()
-                is CalendarUiState.Empty -> EmptyState()
-                is CalendarUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is CalendarUiState.Loading -> CenteredState { RecompLoading() }
+                is CalendarUiState.Empty -> CenteredState { EmptyState() }
+                is CalendarUiState.Error ->
+                    CenteredState {
+                        RecompError(
+                            message = state.message,
+                            onRetry = actions.onRetry
+                        )
+                    }
                 is CalendarUiState.Content -> CalendarContentPane(content = state.content, actions = actions)
             }
         }
@@ -99,84 +109,39 @@ private fun CalendarTopBar(onBack: () -> Unit) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(colors.bg)
-                .padding(horizontal = spacing.gutter, vertical = spacing.md),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = "HISTORY", style = type.kicker, color = colors.volt)
-        Text(
-            text = "BACK",
-            style = type.label,
-            color = colors.dim,
+    Column {
+        Row(
             modifier =
                 Modifier
-                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                    .clickable(onClick = onBack)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
+                    .fillMaxWidth()
+                    .background(colors.bg)
+                    .padding(horizontal = spacing.gutter, vertical = spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "‹",
+                style = type.loadValue,
+                color = colors.dim,
+                modifier =
+                    Modifier
+                        .border(spacing.border, colors.line, RecompTheme.shapes.sm)
+                        .clickable(onClick = onBack)
+                        .padding(horizontal = spacing.md, vertical = spacing.sm),
+            )
+            Spacer(Modifier.width(spacing.md))
+            Text(text = "Verlauf".uppercase(), style = type.kicker, color = colors.volt)
+        }
+        RecompDivider()
     }
+}
+
+/** Vertically centers a shared state component within the content area below the top bar. */
+@Composable
+private fun CenteredState(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
 }
 
 @Composable
 private fun EmptyState() {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "No training logged yet.",
-            style = type.body,
-            color = colors.mutedEmpty,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = "Log a few sets and the days you trained appear here on the calendar.",
-            style = type.body,
-            color = colors.mutedEmpty,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = message, style = type.body, color = colors.legs, textAlign = TextAlign.Center)
-        Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
-    }
+    RecompEmpty(text = "Noch kein Training geloggt.\nLogge ein paar Sätze und die Trainingstage erscheinen hier.")
 }
