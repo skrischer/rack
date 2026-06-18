@@ -21,6 +21,7 @@ import de.rack.app.ui.theme.RecompChip
 import de.rack.app.ui.theme.RecompChipRow
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.theme.recompClick
+import de.rack.app.ui.theme.recompPress
 import java.time.DayOfWeek
 
 /**
@@ -148,7 +149,7 @@ private fun TimeButton(
         modifier =
             Modifier
                 .size(STEP_BUTTON_SIZE)
-                .recompClick(onClick = onClick)
+                .recompPress(onClick = onClick)
                 .border(spacing.border, colors.line, RecompTheme.shapes.sm)
                 .background(colors.panel, RecompTheme.shapes.sm),
         contentAlignment = Alignment.Center,

@@ -144,7 +144,7 @@ fun RestStepper(
 }
 
 /** Formats rest seconds as `m:ss` (e.g. 150 -> "2:30"), the kit's `.step-val` voice. */
-fun formatRestTime(seconds: Int): String =
+private fun formatRestTime(seconds: Int): String =
     "${seconds / SECONDS_PER_MINUTE}:${(seconds % SECONDS_PER_MINUTE).toString().padStart(2, '0')}"
 
 /**

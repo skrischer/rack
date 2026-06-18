@@ -120,7 +120,7 @@ private fun UnitSection(
         SettingsRow(label = "Einheit") {
             RecompSegmentedToggle(
                 options = UNIT_OPTIONS.map { it.second },
-                selectedIndex = UNIT_OPTIONS.indexOfFirst { it.first == unit },
+                selectedIndex = UNIT_OPTIONS.indexOfFirst { it.first == unit }.coerceAtLeast(0),
                 onSelect = { onSelect(UNIT_OPTIONS[it].first) },
             )
         }
