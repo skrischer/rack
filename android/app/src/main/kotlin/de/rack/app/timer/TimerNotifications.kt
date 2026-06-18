@@ -1,60 +1,37 @@
 package de.rack.app.timer
 
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import de.rack.app.MainActivity
 import de.rack.app.R
+import de.rack.app.notifications.REST_DONE_VIBRATION
+import de.rack.app.notifications.REST_TIMER_CHANNEL_ID
 import de.rack.app.ui.timer.RestUiState
 import de.rack.app.ui.timer.SessionUiState
 import de.rack.app.ui.timer.TimerUiState
 
-/** The ongoing-timer notification id and its dedicated high-importance channel. */
+/** The ongoing-timer notification id; its channel is created at app start by `NotificationChannels`. */
 const val TIMER_NOTIFICATION_ID = 1001
-const val TIMER_CHANNEL_ID = "rack_timer"
 
 /**
- * Builds the persistent foreground-service notification and owns the dedicated
- * high-importance channel for the Phase-8 timers (see docs/specs/spec-timers.md).
- * The channel carries the vibration + short sound that signals rest completion, so
- * a backgrounded user is alerted through the OS; the ongoing notification shows the
- * live rest-remaining / session-elapsed and the +15 s / -15 s / skip / restart
- * actions that mirror the in-app rest bar. Notification rendering is isolated here
- * to keep [TimerService] focused on lifecycle.
+ * Builds the persistent foreground-service notification for the Phase-8 timers (see
+ * docs/specs/spec-timers.md) on the shared high-importance `rest_timer` channel that
+ * [de.rack.app.notifications.NotificationChannels] creates at app start. That channel
+ * carries the vibration + short sound signalling rest completion, so a backgrounded
+ * user is alerted through the OS; the ongoing notification shows the live
+ * rest-remaining / session-elapsed and the +15 s / -15 s / skip / restart actions that
+ * mirror the in-app rest bar. Notification rendering is isolated here to keep
+ * [TimerService] focused on lifecycle.
  */
 class TimerNotifications(
     private val context: Context,
 ) {
     private val manager: NotificationManager =
         context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-    /** Create the dedicated high-importance channel (idempotent); call before posting. */
-    fun ensureChannel() {
-        if (manager.getNotificationChannel(TIMER_CHANNEL_ID) != null) return
-        val channel =
-            NotificationChannel(
-                TIMER_CHANNEL_ID,
-                context.getString(R.string.timer_channel_name),
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = context.getString(R.string.timer_channel_description)
-                enableVibration(true)
-                vibrationPattern = REST_DONE_VIBRATION
-                val audio =
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audio)
-            }
-        manager.createNotificationChannel(channel)
-    }
 
     /**
      * The ongoing notification reflecting [state]: title shows session elapsed,
@@ -93,7 +70,7 @@ class TimerNotifications(
     }
 
     private fun baseBuilder(): NotificationCompat.Builder =
-        NotificationCompat.Builder(context, TIMER_CHANNEL_ID)
+        NotificationCompat.Builder(context, REST_TIMER_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setOngoing(true)
             .setContentIntent(contentIntent())
@@ -130,7 +107,6 @@ class TimerNotifications(
     private companion object {
         const val PENDING_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         const val SECONDS_PER_MINUTE = 60
-        val REST_DONE_VIBRATION = longArrayOf(0L, 400L, 200L, 400L)
 
         fun formatClock(totalSeconds: Int): String {
             val safe = totalSeconds.coerceAtLeast(0)

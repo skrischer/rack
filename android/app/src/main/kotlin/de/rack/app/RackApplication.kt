@@ -2,6 +2,7 @@ package de.rack.app
 
 import android.app.Application
 import de.rack.app.di.AppContainer
+import de.rack.app.notifications.NotificationChannels
 
 /**
  * Application entry point that owns the process-wide [AppContainer], so the
@@ -14,5 +15,6 @@ class RackApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        NotificationChannels.ensure(this)
     }
 }
