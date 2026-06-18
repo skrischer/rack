@@ -32,7 +32,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 /*
- * The Home overview content sections (docs/design/screens/home.html): the current-week
+ * The Home overview content sections: the current-week
  * "Wochenvolumen" card (per-muscle and per-tag Vico charts under a total-volume badge),
  * the training-streak hero card, and the recent-sessions list. Purely presentational
  * helpers consumed by HomeScreen; no Supabase access or business logic here.

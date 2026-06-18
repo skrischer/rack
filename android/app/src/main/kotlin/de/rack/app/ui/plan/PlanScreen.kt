@@ -43,7 +43,7 @@ fun planActions(
     )
 
 /**
- * Plan/Home as a launcher (docs/design/screens/plan.html): a today-hero for the next
+ * Plan/Home as a launcher: a today-hero for the next
  * session with a "Session starten" CTA, then the selected plan's days as a compact,
  * tappable row list. Set logging now lives in the session player, so the overview holds
  * no inline weight/reps/RIR inputs. Purely presentational — it observes [state] and emits

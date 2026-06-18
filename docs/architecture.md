@@ -11,7 +11,7 @@
 | Supabase (managed) | Postgres + Auth + Realtime + RLS + Storage. Owns the schema, policies, and seed data. |
 | rack-MCP (Node/TS, on the VPS) | MCP server (Streamable HTTP). Read + write tools. API-key → user auth; acts as the resolved user via `supabase-js`. Zod-validates inputs. Admin endpoint that mints API keys. |
 | Caddy (VPS) | TLS reverse proxy in front of the rack-MCP (HTTPS for remote MCP). |
-| Recomp design system | Normative visual language: tokens (`docs/design-tokens.md`) + screen reference designs (`docs/design/`, mirrored to the Claude Design project). The Compose theme encodes the tokens; every UI phase consumes them. |
+| Recomp design system | Normative visual language: tokens (`docs/design-tokens.md`), encoded once in the Compose Recomp theme; every UI phase consumes the theme, never ad-hoc colors. |
 
 ## Data model (seed)
 

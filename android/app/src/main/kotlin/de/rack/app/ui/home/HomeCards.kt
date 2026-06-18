@@ -19,7 +19,7 @@ import androidx.compose.ui.graphics.Color
 import de.rack.app.ui.theme.RecompTheme
 
 /*
- * Screen-local Recomp card primitives for the Home overview (docs/design/screens/home.html):
+ * Screen-local Recomp card primitives for the Home overview:
  * the panel card surface, its elevated head with a trailing badge slot, a labelled chart
  * block, and the push/pull/legs/superset chart legend. Purely presentational — every color
  * resolves through the Recomp theme; no business logic or data access here.

@@ -40,7 +40,7 @@ import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.theme.SplineSansMonoFamily
 
 /**
- * Signed-out login screen (design ref: docs/design/screens/login.html). Purely
+ * Signed-out login screen. Purely
  * presentational: it observes [state] and emits sign-in / dismiss-error events upward —
  * no Supabase access and no business logic. Routing to the plan view happens in the nav
  * host once the session is authenticated.

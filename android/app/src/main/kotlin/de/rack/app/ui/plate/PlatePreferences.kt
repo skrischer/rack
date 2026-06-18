@@ -27,8 +27,8 @@ private val DotSizePref = 11.dp
 private const val BAR_STEP_KG = 2.5
 
 /**
- * The persisted bar-weight + inventory editors for the plate calculator (design ref
- * docs/design/screens/plate-calc.html "Stange"). Each stepper edit is forwarded upward to
+ * The persisted bar-weight + inventory editors for the plate calculator (the "Stange"
+ * control). Each stepper edit is forwarded upward to
  * the ViewModel, which clamps it and persists it via the repository; this file is purely
  * presentational. Kept separate from [PlateCalcSections] so neither file overflows the
  * per-file length guideline.

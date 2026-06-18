@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Vector icons for the bottom-nav dock and its off-canvas overflow, traced verbatim from the
- * stroked SVG paths in docs/design/screens/menu.html. They carry no intrinsic color — the stroke
+ * stroked SVG paths in the Recomp nav-dock design. They carry no intrinsic color — the stroke
  * is a placeholder recolored by the consuming [androidx.compose.material3.Icon]'s tint
  * (`LocalContentColor`), so the dock's volt/dim active state and the overflow's dim leading icons
  * resolve through the Recomp theme like every other surface.
