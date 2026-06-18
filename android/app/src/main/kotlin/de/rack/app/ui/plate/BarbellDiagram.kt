@@ -55,7 +55,9 @@ fun BarbellDiagram(
     perSide: List<PlateSlot>,
     modifier: Modifier = Modifier,
 ) {
-    val colors = RecompTheme.colors
+    // PlateBreakdown.Loadable.perSide is largest-first (the greedy split in PlateMath sorts
+    // descending), so the left stack renders as-is — largest at the collar — and the right
+    // stack mirrors it via asReversed().
     val plates = perSide.flatMap { slot -> List(slot.count) { slot.weight } }.take(MAX_PLATES_PER_SIDE)
     Row(
         modifier = modifier.fillMaxWidth().height(DiagramHeight),

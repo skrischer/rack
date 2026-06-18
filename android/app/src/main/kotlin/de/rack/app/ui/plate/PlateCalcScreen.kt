@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import de.rack.app.ui.theme.RecompDivider
 import de.rack.app.ui.theme.RecompTheme
 
 /**
@@ -36,6 +37,7 @@ fun PlateCalcScreen(
     val spacing = RecompTheme.spacing
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
         TopBar(onBack = actions.onBack)
+        RecompDivider()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),

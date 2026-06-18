@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import de.rack.app.domain.PlateCalcPreferences
 import de.rack.app.domain.PlateStock
@@ -33,6 +32,10 @@ private const val BAR_STEP_KG = 2.5
  * the ViewModel, which clamps it and persists it via the repository; this file is purely
  * presentational. Kept separate from [PlateCalcSections] so neither file overflows the
  * per-file length guideline.
+ *
+ * The reference mock shows the bar as a fixed 20/15 kg segmented toggle; we keep the stepper
+ * deliberately so the existing 5–30 kg bar range stays reachable — this is a re-skin and must
+ * not drop ViewModel-backed functionality.
  */
 @Composable
 fun BarSelectorRow(
@@ -45,8 +48,7 @@ fun BarSelectorRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clip(RecompTheme.shapes.xl)
-                .background(colors.panel)
+                .background(colors.panel, RecompTheme.shapes.xl)
                 .border(spacing.border, colors.line, RecompTheme.shapes.xl)
                 .padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV),
         horizontalArrangement = Arrangement.SpaceBetween,

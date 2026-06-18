@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -58,8 +57,7 @@ fun PlateCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RecompTheme.shapes.xl)
-                .background(colors.panel)
+                .background(colors.panel, RecompTheme.shapes.xl)
                 .border(spacing.border, colors.line, RecompTheme.shapes.xl),
         content = content,
     )
