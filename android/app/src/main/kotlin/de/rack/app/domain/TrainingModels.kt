@@ -27,7 +27,11 @@ data class PlanDay(
     val tag: String?,
 )
 
-/** An exercise placed on a plan day (`plan_exercises`), with its catalog name and category. */
+/**
+ * An exercise placed on a plan day (`plan_exercises`), with its catalog name,
+ * [category], and [equipment]. The latter two feed the Phase-9 compound/isolation
+ * classification that selects the rest default (docs/specs/spec-session-player.md).
+ */
 data class PlanExercise(
     val id: String,
     val dayId: String,
@@ -39,6 +43,7 @@ data class PlanExercise(
     val rir: Int?,
     val cue: String?,
     val supersetLabel: String?,
+    val equipment: List<String> = emptyList(),
 )
 
 /** One logged exercise entry (`set_logs`): weight, per-set reps, and RIR. */

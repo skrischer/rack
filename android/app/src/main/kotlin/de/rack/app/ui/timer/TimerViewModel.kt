@@ -3,8 +3,10 @@ package de.rack.app.ui.timer
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import de.rack.app.data.TimerController
+import de.rack.app.domain.ExerciseType
 import de.rack.app.domain.resolveGroupRotation
 import de.rack.app.domain.resolveRestSeconds
+import de.rack.app.domain.restSecondsFor
 import de.rack.app.ui.plan.LoggedExerciseContext
 import de.rack.app.ui.theme.SupersetKind
 import kotlinx.coroutines.flow.SharedFlow
@@ -62,6 +64,23 @@ class TimerViewModel(
     ) {
         if (!controller.isSessionActive.value) startSession()
         val seconds = resolveRestSeconds(category, context.group.size)
+        controller.startRest(seconds, rotationFor(context))
+    }
+
+    /**
+     * Auto-prompt the rest timer on a session-player set tick. The caller (Phase 9)
+     * has already classified the focused exercise into a resolved [type]; this only
+     * looks up the type -> duration via [restSecondsFor] (Phase 8's single map, with
+     * the superset/circuit group override) and records the rotation cue, reusing the
+     * same controller and rest surface as [onSetLogged]. The player owns no duration
+     * map and no countdown — it supplies the resolved type only.
+     */
+    fun onSetTicked(
+        type: ExerciseType,
+        context: LoggedExerciseContext,
+    ) {
+        if (!controller.isSessionActive.value) startSession()
+        val seconds = restSecondsFor(type, context.group.size)
         controller.startRest(seconds, rotationFor(context))
     }
 

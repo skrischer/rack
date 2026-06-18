@@ -41,21 +41,52 @@ const val REST_CIRCUIT_SECONDS = 38
 val COMPOUND_CATEGORIES: Set<String> = setOf("back", "chest", "legs", "shoulders")
 
 /**
- * Resolves the initial rest duration (seconds) for an exercise from its catalog
- * [category] and its `superset_label` [groupSize] (the count of plan-exercises in
- * the same plan-day sharing the same label). A group of 2 rests as a superset and
- * 3+ as a circuit; otherwise (a single exercise) the rest is chosen by category
- * via [isCompoundCategory].
+ * The resolved movement type that selects the standalone rest default: a
+ * multi-joint [COMPOUND] (longer rest) or a single-joint [ISOLATION] (shorter
+ * rest). It is the contract Phase 8 exposes to callers: the caller classifies the
+ * exercise into one of these (Phase 9 owns the catalog `category`/`equipment` rule)
+ * and Phase 8 owns only the type -> duration map below via [restSecondsFor].
  */
-fun resolveRestSeconds(
-    category: String?,
+enum class ExerciseType {
+    COMPOUND,
+    ISOLATION,
+}
+
+/**
+ * The single Phase-8 type -> duration map: resolves the initial rest seconds from a
+ * caller-resolved exercise [type] and its `superset_label` [groupSize] (the count
+ * of plan-exercises in the same plan-day sharing the same label). A group of 2 rests
+ * as a superset and 3+ as a circuit, overriding the per-exercise [type]; a standalone
+ * exercise rests by its [type] (compound 2-3 min, isolation 60-90 s). This is the only
+ * place the type -> duration mapping lives, so no caller duplicates it.
+ */
+fun restSecondsFor(
+    type: ExerciseType,
     groupSize: Int,
 ): Int =
     when (supersetKind(groupSize)) {
         SupersetKind.SUPERSET -> REST_SUPERSET_SECONDS
         SupersetKind.CIRCUIT -> REST_CIRCUIT_SECONDS
-        SupersetKind.NONE -> if (isCompoundCategory(category)) REST_COMPOUND_SECONDS else REST_ISOLATION_SECONDS
+        SupersetKind.NONE -> if (type == ExerciseType.COMPOUND) REST_COMPOUND_SECONDS else REST_ISOLATION_SECONDS
     }
+
+/**
+ * Resolves the initial rest duration (seconds) for an exercise from its catalog
+ * [category] and its `superset_label` [groupSize] (the count of plan-exercises in
+ * the same plan-day sharing the same label). The coarse category -> type step uses
+ * [isCompoundCategory]; the type -> duration step delegates to [restSecondsFor] so the
+ * duration map stays single-sourced. The Phase-3 log flow keeps this category-based
+ * entry; the Phase-9 session player classifies via its own richer rule and calls
+ * [restSecondsFor] with the resolved type instead.
+ */
+fun resolveRestSeconds(
+    category: String?,
+    groupSize: Int,
+): Int =
+    restSecondsFor(
+        type = if (isCompoundCategory(category)) ExerciseType.COMPOUND else ExerciseType.ISOLATION,
+        groupSize = groupSize,
+    )
 
 /**
  * True when [category] maps to a compound (multi-joint) group in

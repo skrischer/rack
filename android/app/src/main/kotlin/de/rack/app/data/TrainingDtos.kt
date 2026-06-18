@@ -60,14 +60,16 @@ internal data class PlanExerciseDto(
             rir = rir,
             cue = cue,
             supersetLabel = supersetLabel,
+            equipment = exercises?.equipment.orEmpty(),
         )
 }
 
-/** The embedded catalog name and category from the `exercises` join on `plan_exercises`. */
+/** The embedded catalog name, category, and equipment from the `exercises` join on `plan_exercises`. */
 @Serializable
 internal data class ExerciseCatalogDto(
     val name: String,
     val category: String? = null,
+    val equipment: List<String>? = null,
 )
 
 @Serializable

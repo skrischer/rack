@@ -1,6 +1,7 @@
 package de.rack.app.ui.timer
 
 import de.rack.app.data.TimerController
+import de.rack.app.domain.ExerciseType
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.REST_CIRCUIT_SECONDS
 import de.rack.app.domain.REST_COMPOUND_SECONDS
@@ -173,6 +174,44 @@ class TimerViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(60, state.session?.elapsedSeconds)
         assertEquals(REST_ISOLATION_SECONDS, state.rest?.remainingSeconds)
+    }
+
+    @Test
+    fun `ticking a standalone compound set auto-starts the session and a compound rest`() {
+        viewModel.onSetTicked(type = ExerciseType.COMPOUND, context = context(listOf(exercise("a")), index = 0))
+
+        val state = viewModel.uiState.value
+        assertNotNull(state.session)
+        assertEquals(REST_COMPOUND_SECONDS, state.rest?.remainingSeconds)
+        assertNull(state.rotation)
+    }
+
+    @Test
+    fun `ticking a standalone isolation set rests at the isolation default`() {
+        viewModel.onSetTicked(type = ExerciseType.ISOLATION, context = context(listOf(exercise("a")), index = 0))
+
+        assertEquals(REST_ISOLATION_SECONDS, viewModel.uiState.value.rest?.remainingSeconds)
+    }
+
+    @Test
+    fun `the superset group overrides a ticked compound to the superset default`() {
+        val group = listOf(exercise("a", "Press"), exercise("b", "Row"))
+
+        viewModel.onSetTicked(type = ExerciseType.COMPOUND, context = context(group, index = 0))
+
+        val state = viewModel.uiState.value
+        assertEquals(REST_SUPERSET_SECONDS, state.rest?.remainingSeconds)
+        assertEquals(SupersetKind.SUPERSET, state.rotation?.kind)
+        assertEquals("Row", state.rotation?.nextExerciseName)
+    }
+
+    @Test
+    fun `the circuit group overrides a ticked compound to the circuit default`() {
+        val group = listOf(exercise("a"), exercise("b"), exercise("c"))
+
+        viewModel.onSetTicked(type = ExerciseType.COMPOUND, context = context(group, index = 0))
+
+        assertEquals(REST_CIRCUIT_SECONDS, viewModel.uiState.value.rest?.remainingSeconds)
     }
 
     private fun context(

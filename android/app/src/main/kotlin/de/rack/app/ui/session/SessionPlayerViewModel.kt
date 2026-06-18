@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import de.rack.app.data.TrainingRepository
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,6 +42,17 @@ class SessionPlayerViewModel(
     private val _uiState = MutableStateFlow<SessionPlayerScreenState>(SessionPlayerScreenState.Loading)
     val uiState: StateFlow<SessionPlayerScreenState> = _uiState.asStateFlow()
 
+    private val _restPrompts = MutableSharedFlow<RestPrompt>(extraBufferCapacity = 1)
+
+    /**
+     * Emits once per ticked set the resolved [RestPrompt] (classified exercise type +
+     * group context) so the host wires it to the Phase-8 rest timer. The player owns the
+     * classification, not the type -> duration map or the countdown (Phase 8 owns those).
+     */
+    val restPrompts: SharedFlow<RestPrompt> = _restPrompts.asSharedFlow()
+
+    private var exercises: List<PlanExercise> = emptyList()
+
     init {
         load()
     }
@@ -67,24 +81,28 @@ class SessionPlayerViewModel(
         }
 
     /**
-     * Tick the focused set: move it from [SessionPlayerUiState.remaining] into
-     * [SessionPlayerUiState.done] and focus the next remaining step. The set's reps
-     * and the exercise's kg/RIR are already captured in the entries by the edit
-     * handlers; ticking only advances the cursor. On the last step [focused]
+     * Tick the focused set: auto-prompt the rest timer for the ticked exercise, then
+     * move the set from [SessionPlayerUiState.remaining] into [SessionPlayerUiState.done]
+     * and focus the next remaining step. The set's reps and the exercise's kg/RIR are
+     * already captured in the entries by the edit handlers; ticking only advances the
+     * cursor. The rest prompt carries the [classifyExerciseType] result and the group
+     * context so the Phase-8 timer applies the right default; on the last step [focused]
      * becomes null and the session is finished.
      */
-    fun tickFocused() =
+    fun tickFocused() {
+        val ticked = (_uiState.value as? SessionPlayerScreenState.Content)?.session?.focused ?: return
+        restPromptFor(exercises, ticked.planExerciseId)?.let(_restPrompts::tryEmit)
         updateSession { state ->
-            val current = state.focused ?: return@updateSession state
             state.copy(
                 focused = state.remaining.firstOrNull(),
                 remaining = state.remaining.drop(1),
-                done = state.done + current,
+                done = state.done + ticked,
             )
         }
+    }
 
     private suspend fun buildSession(): SessionPlayerUiState {
-        val exercises = repository.getPlanExercises(dayId)
+        exercises = repository.getPlanExercises(dayId)
         val lastLogs = lastLogsFor(exercises)
         val steps = buildSessionSteps(exercises)
         return SessionPlayerUiState(
