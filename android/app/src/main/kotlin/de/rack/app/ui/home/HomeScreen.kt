@@ -25,7 +25,7 @@ import de.rack.app.ui.theme.RecompTheme
 import java.time.LocalDate
 
 /**
- * Read-only Home overview (docs/design/screens/home.html): the current ISO week's volume
+ * Read-only Home overview: the current ISO week's volume
  * breakdown (per muscle and per plan-day tag as Vico column charts under a total-volume
  * badge), the training-streak hero, and the recent-sessions list (newest first), each
  * session tappable to open that date in calendar/history. Purely presentational — it

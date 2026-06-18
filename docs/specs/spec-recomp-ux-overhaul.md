@@ -15,19 +15,19 @@ default branch with that open milestone.
 What is true while this theme is active (each screen flips its own box as it
 lands; the spec itself is not "done"):
 
-- [ ] The Compose theme exposes the full Recomp component vocabulary used by the
+- [x] The Compose theme exposes the full Recomp component vocabulary used by the
       designs (set table, nav dock/off-canvas, stat strip, launcher day rows,
       segmented toggle, stepper, chips, badges, empty/loading/error) — all from
       `docs/design-tokens.md` tokens, no ad-hoc colors.
-- [ ] App navigation is the pull-up **bottom-nav dock**: quick-nav tiles (Plan,
+- [x] App navigation is the pull-up **bottom-nav dock**: quick-nav tiles (Plan,
       Verlauf, Statistik, Artifacts) + a draggable off-canvas overflow (Übungen,
       API-Keys, Einstellungen, Account/Abmelden). Detail/flow screens hide it.
-- [ ] Plan/Home is a **launcher**: today-hero + "Session starten" CTA + compact
+- [x] Plan/Home is a **launcher**: today-hero + "Session starten" CTA + compact
       plan-day list; no inline per-set inputs on the overview.
-- [ ] The session player logs via a **set table** (`Satz | Vorher | kg | Wdh |
+- [x] The session player logs via a **set table** (`Satz | Vorher | kg | Wdh |
       RIR | ✓`) with a previous-performance column and a per-set check that
       auto-starts the rest timer.
-- [ ] Every remaining screen matches its `docs/design/screens/<screen>.html`
+- [x] Every remaining screen matches its `docs/design/screens/<screen>.html`
       reference, including loading/empty/error states: session summary
       (`session-summary`), Übersicht/Statistik (`home`), Verlauf (`calendar`,
       `history-expanded`), exercise detail/progress (`exercise-detail`,
@@ -36,7 +36,7 @@ lands; the spec itself is not "done"):
       calculator (`plate-calc`), login (`login`), and the shared loading/empty/
       error states (`states`). The off-canvas overflow (`menu`) is covered by
       the nav-dock outcome above.
-- [ ] When a screen is implemented its design scaffolding is retired: once all
+- [x] When a screen is implemented its design scaffolding is retired: once all
       screen issues close, `docs/design/` is removed and the architecture /
       CLAUDE.md / roadmap references are cleaned up (see Decision log / the
       terminal cleanup issue).
@@ -153,3 +153,16 @@ no archive):
 - 2026-06-18: Acceptance gate — cleanup resolved: the terminal issue removes
   `docs/design/` in full (screens + `kit.css` + README); the external Claude
   Design project is kept as an archive (not deleted).
+- 2026-06-18 (#159 nav dock): the off-canvas "Übungen" overflow row was OMITTED
+  — the app has no exercise-catalog screen and the milestone forbids new
+  screens, so a disabled row would violate "overflow links reachable". A future
+  exercise-catalog feature spec re-adds the link.
+- 2026-06-18 (#160 plan launcher): a minimal edit to `ui/RackNavHost.kt`
+  (PlanRoute) was permitted to drop the plan-overview inline-logging/timer
+  plumbing — the nav-scaffold lane rule was a concurrency guard against the
+  (already-merged) #159 agent; shared ViewModels/timer classes were kept (still
+  used by the session player).
+- 2026-06-18 (#160 deferrals, out of scope, documented in PR #185): the
+  "Einzelnen Satz loggen" quick-log row (no single-set logging surface
+  post-#161) and the plan-day footer "· aktualisiert <date>" (the Plan model has
+  no `updated_at`).

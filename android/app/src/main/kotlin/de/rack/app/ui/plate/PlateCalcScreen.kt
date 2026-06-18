@@ -20,7 +20,7 @@ import de.rack.app.ui.theme.RecompDivider
 import de.rack.app.ui.theme.RecompTheme
 
 /**
- * Recomp-styled plate calculator (#169, design ref docs/design/screens/plate-calc.html): a
+ * Recomp-styled plate calculator (#169): a
  * target-kg input over the derived per-side breakdown — the symmetric barbell diagram, the
  * per-side plate list, the load equation, and an exact/short marker — plus the persisted bar
  * weight and plate inventory editors. Purely presentational: it renders [state] and forwards

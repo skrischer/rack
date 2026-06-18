@@ -87,8 +87,8 @@ re-prioritize):
 | Recomp UX Overhaul | [spec](specs/spec-recomp-ux-overhaul.md) | [#14](https://github.com/skrischer/rack/milestone/14) |
 
 - **Recomp UX Overhaul.** Bring every app surface up to the refreshed Recomp
-  design language prepared in `docs/design/` (a mirror of the Claude Design
-  project): the Strong/Hevy **launcher** model for Plan/Home (today-hero + Start
+  design language (normative tokens in `docs/design-tokens.md`): the Strong/Hevy
+  **launcher** model for Plan/Home (today-hero + Start
   CTA + compact plan list), **set-table** logging in the session player
   (`Satz | Vorher | kg | Wdh | RIR | ✓`, a previous-performance column, a per-set
   check that auto-starts the rest timer), a pull-up **bottom-nav dock** with an
