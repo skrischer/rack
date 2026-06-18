@@ -2,6 +2,12 @@
 <resources>
     <string name="app_name">Rack</string>
 
+    <!-- Phase 10 push notifications: local channels created at app startup (no Firebase). -->
+    <string name="channel_agent_update_name">Agent updates</string>
+    <string name="channel_agent_update_description">Notifications when your agent updates a training plan</string>
+    <string name="channel_workout_reminder_name">Workout reminders</string>
+    <string name="channel_workout_reminder_description">Scheduled reminders to start a workout</string>
+
     <!-- Phase 8 timers: foreground-service notification + rest-completion alert. -->
     <string name="timer_channel_name">Workout timers</string>
     <string name="timer_channel_description">Rest countdown and session timer with completion alert</string>

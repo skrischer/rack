@@ -47,7 +47,6 @@ class TimerService : Service() {
         super.onCreate()
         controller = (application as RackApplication).container.timerController
         notifications = TimerNotifications(this)
-        notifications.ensureChannel()
         startInForeground()
         observeController()
     }
