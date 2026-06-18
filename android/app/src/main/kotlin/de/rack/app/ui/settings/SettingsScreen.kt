@@ -2,34 +2,44 @@ package de.rack.app.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import de.rack.app.BuildConfig
 import de.rack.app.domain.ReminderPreferences
 import de.rack.app.domain.UserSettings
 import de.rack.app.domain.WeightUnit
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
+import de.rack.app.ui.theme.RecompSegmentedToggle
 import de.rack.app.ui.theme.RecompTheme
+import de.rack.app.ui.theme.recompClick
 import java.time.DayOfWeek
 
 /**
- * Recomp-styled Settings screen (Phase 12, docs/specs/spec-settings.md): edits the
- * weight unit, theme, the four rest-timer defaults, and the editable display name,
- * and shows the read-only Auth email. Purely presentational — it renders [state] and
- * emits each edit / retry / back event upward; no Supabase access and no business
- * logic live here, and every value is read from the ViewModel's StateFlow.
+ * Recomp-styled Settings screen (docs/specs/spec-recomp-ux-overhaul.md, settings.html): a
+ * stack of `.card`s with panel-elevated heads and divided rows — the weight-unit and theme
+ * segmented toggles, the four rest-timer steppers, the reminder section, and the
+ * profile/account block, over a version footer. Purely presentational — it renders [state]
+ * and emits each edit / retry / back event upward; no Supabase access and no business logic
+ * live here, and every value is read from the ViewModel's StateFlow.
  */
 @Composable
 fun SettingsScreen(
@@ -44,8 +54,8 @@ fun SettingsScreen(
         SettingsTopBar(onBack = actions.onBack)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is SettingsUiState.Loading -> CenterSpinner()
-                is SettingsUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is SettingsUiState.Loading -> RecompLoading()
+                is SettingsUiState.Error -> RecompError(message = state.message, onRetry = actions.onRetry)
                 is SettingsUiState.Content ->
                     SettingsContent(
                         settings = state.settings,
@@ -90,13 +100,14 @@ private fun SettingsContent(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
         item { UnitSection(unit = settings.weightUnit, onSelect = actions.onSelectUnit) }
         item { ThemeSection(theme = settings.theme, onSelect = actions.onSelectTheme) }
         item { RestDefaultsSection(settings = settings, onSet = actions.onSetRestSeconds) }
         item { ReminderSection(prefs = reminder, actions = reminderActions) }
         item { ProfileSection(settings = settings, email = email, onCommit = actions.onDisplayNameChange) }
+        item { SettingsFooter() }
     }
 }
 
@@ -105,16 +116,14 @@ private fun UnitSection(
     unit: WeightUnit,
     onSelect: (WeightUnit) -> Unit,
 ) {
-    SettingsSection(title = "WEIGHT UNIT") {
-        SegmentedToggle(
-            options =
-                listOf(
-                    ToggleOption(WeightUnit.KG, "KG"),
-                    ToggleOption(WeightUnit.LB, "LB"),
-                ),
-            selected = unit,
-            onSelect = onSelect,
-        )
+    SettingsCard(title = "Gewichtseinheit") {
+        SettingsRow(label = "Einheit") {
+            RecompSegmentedToggle(
+                options = UNIT_OPTIONS.map { it.second },
+                selectedIndex = UNIT_OPTIONS.indexOfFirst { it.first == unit }.coerceAtLeast(0),
+                onSelect = { onSelect(UNIT_OPTIONS[it].first) },
+            )
+        }
     }
 }
 
@@ -123,16 +132,14 @@ private fun ThemeSection(
     theme: String,
     onSelect: (String) -> Unit,
 ) {
-    SettingsSection(title = "THEME") {
-        SegmentedToggle(
-            options =
-                listOf(
-                    ToggleOption(UserSettings.THEME_DARK, "DARK"),
-                    ToggleOption(UserSettings.THEME_SYSTEM, "SYSTEM"),
-                ),
-            selected = theme,
-            onSelect = onSelect,
-        )
+    SettingsCard(title = "Darstellung") {
+        SettingsRow(label = "Theme") {
+            RecompSegmentedToggle(
+                options = THEME_OPTIONS.map { it.second },
+                selectedIndex = THEME_OPTIONS.indexOfFirst { it.first == theme }.coerceAtLeast(0),
+                onSelect = { onSelect(THEME_OPTIONS[it].first) },
+            )
+        }
     }
 }
 
@@ -141,27 +148,19 @@ private fun RestDefaultsSection(
     settings: UserSettings,
     onSet: (RestDefaultKind, Int) -> Unit,
 ) {
-    SettingsSection(title = "REST DEFAULTS") {
-        RestDefaultRow(
-            label = "COMPOUND",
-            seconds = settings.restCompoundSeconds,
-            onChange = { onSet(RestDefaultKind.COMPOUND, it) },
-        )
-        RestDefaultRow(
-            label = "ISOLATION",
-            seconds = settings.restIsolationSeconds,
-            onChange = { onSet(RestDefaultKind.ISOLATION, it) },
-        )
-        RestDefaultRow(
-            label = "SUPERSET",
-            seconds = settings.restSupersetSeconds,
-            onChange = { onSet(RestDefaultKind.SUPERSET, it) },
-        )
-        RestDefaultRow(
-            label = "CIRCUIT",
-            seconds = settings.restCircuitSeconds,
-            onChange = { onSet(RestDefaultKind.CIRCUIT, it) },
-        )
+    SettingsCard(title = "Pausen-Defaults") {
+        SettingsRow(label = "Verbund") {
+            RestStepper(seconds = settings.restCompoundSeconds) { onSet(RestDefaultKind.COMPOUND, it) }
+        }
+        SettingsRow(label = "Isolation") {
+            RestStepper(seconds = settings.restIsolationSeconds) { onSet(RestDefaultKind.ISOLATION, it) }
+        }
+        SettingsRow(label = "Supersatz") {
+            RestStepper(seconds = settings.restSupersetSeconds) { onSet(RestDefaultKind.SUPERSET, it) }
+        }
+        SettingsRow(label = "Zirkel") {
+            RestStepper(seconds = settings.restCircuitSeconds) { onSet(RestDefaultKind.CIRCUIT, it) }
+        }
     }
 }
 
@@ -171,85 +170,81 @@ private fun ProfileSection(
     email: String,
     onCommit: (String) -> Unit,
 ) {
-    SettingsSection(title = "PROFILE") {
-        DisplayNameField(displayName = settings.displayName, onCommit = onCommit)
-        EmailRow(email = email)
+    val colors = RecompTheme.colors
+    SettingsCard(title = "Profil") {
+        SettingsBlock { DisplayNameField(displayName = settings.displayName, onCommit = onCommit) }
+        SettingsRow(label = "Mail") {
+            Text(
+                text = email.takeIf { it.isNotBlank() } ?: "Unbekannt",
+                style = RecompTheme.typography.label,
+                color = colors.dim,
+            )
+        }
     }
 }
 
 @Composable
 private fun SettingsTopBar(onBack: () -> Unit) {
     val colors = RecompTheme.colors
-    val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Row(
+    Column(modifier = Modifier.fillMaxWidth().background(colors.bg)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.gutter, vertical = spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BackButton(onBack = onBack)
+            Spacer(Modifier.width(spacing.md))
+            Text(text = "EINSTELLUNGEN", style = RecompTheme.typography.kicker, color = colors.volt)
+        }
+        RecompDivider()
+    }
+}
+
+@Composable
+private fun BackButton(onBack: () -> Unit) {
+    val colors = RecompTheme.colors
+    val spacing = RecompTheme.spacing
+    Box(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .background(colors.bg)
-                .padding(horizontal = spacing.gutter, vertical = spacing.md),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+                .size(BACK_BUTTON_SIZE)
+                .recompClick(onClick = onBack)
+                .border(spacing.border, colors.line, RecompTheme.shapes.sm),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text = "SETTINGS", style = type.kicker, color = colors.volt)
-        Text(
-            text = "BACK",
-            style = type.label,
-            color = colors.dim,
-            modifier =
-                Modifier
-                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                    .clickable(onClick = onBack)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
+        Text(text = "‹", style = RecompTheme.typography.exerciseName, color = colors.dim)
     }
 }
 
 @Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
+private fun SettingsFooter() {
     val colors = RecompTheme.colors
-    val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = spacing.lg),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(text = message, style = type.body, color = colors.legs)
         Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            text = "Rack · v${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}",
+            style = RecompTheme.typography.history,
+            color = colors.dim,
+            textAlign = TextAlign.Center,
         )
     }
 }
 
-/**
- * Pure UI clamping for the rest-default stepper: edits stay within [MIN]..[MAX] and
- * move by [STEP] seconds so a stored default is always a clean increment. This is a
- * presentation constraint on the control, not the timer's domain logic.
- */
-object RestSeconds {
-    const val MIN = 15
-    const val MAX = 600
-    const val STEP = 15
+private val BACK_BUTTON_SIZE = 34.dp
 
-    fun increment(seconds: Int): Int = (seconds + STEP).coerceAtMost(MAX)
+/** Weight-unit options in display order; storage stays canonical kg (see [WeightUnit]). */
+private val UNIT_OPTIONS =
+    listOf(
+        WeightUnit.KG to "KG",
+        WeightUnit.LB to "LB",
+    )
 
-    fun decrement(seconds: Int): Int = (seconds - STEP).coerceAtLeast(MIN)
-}
+/** Theme options in display order; both resolve to the Recomp dark palette this phase. */
+private val THEME_OPTIONS =
+    listOf(
+        UserSettings.THEME_DARK to "Dark",
+        UserSettings.THEME_SYSTEM to "System",
+    )
