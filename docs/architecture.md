@@ -11,6 +11,7 @@
 | Supabase (managed) | Postgres + Auth + Realtime + RLS + Storage. Owns the schema, policies, and seed data. |
 | rack-MCP (Node/TS, on the VPS) | MCP server (Streamable HTTP). Read + write tools. API-key → user auth; acts as the resolved user via `supabase-js`. Zod-validates inputs. Admin endpoint that mints API keys. |
 | Caddy (VPS) | TLS reverse proxy in front of the rack-MCP (HTTPS for remote MCP). |
+| Recomp design system | Normative visual language: tokens (`docs/design-tokens.md`) + screen reference designs (`docs/design/`, mirrored to the Claude Design project). The Compose theme encodes the tokens; every UI phase consumes them. |
 
 ## Data model (seed)
 
@@ -63,6 +64,10 @@ carries `source` ('app' | 'agent') and `updated_at`.
   user-scoped, registered on the server.
 - New screen / UI → an `/android` feature; data access through a repository,
   never Supabase calls inside Composables.
+- New / reworked UI visuals → follow the Recomp design system: tokens in
+  `docs/design-tokens.md` (normative) and the screen reference designs in
+  `docs/design/`. Encode tokens once in the Compose theme; compose screens from
+  that theme, never ad-hoc colors.
 - New table or policy → `/supabase/migrations`, with its RLS policy in the same
   migration.
 - A rule both app and MCP must obey → enforce it in the database (constraint,
