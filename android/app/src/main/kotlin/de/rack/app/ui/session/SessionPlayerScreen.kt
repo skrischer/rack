@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
+import de.rack.app.domain.WeightUnit
 import de.rack.app.ui.theme.RecompTheme
 
 /**
@@ -100,6 +101,7 @@ private fun SessionBody(
                 reference = session.referenceFor(focused.planExerciseId),
                 rotationCueName = session.rotationCueName,
                 progress = progress,
+                weightUnit = session.weightUnit,
             ),
         actions = actions,
     )
@@ -123,6 +125,7 @@ data class SessionFocusContent(
     val reference: String?,
     val rotationCueName: String?,
     val progress: SessionProgress,
+    val weightUnit: WeightUnit,
 )
 
 @Composable

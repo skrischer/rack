@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import de.rack.app.domain.WeightUnit
+import de.rack.app.domain.unitLabel
 import de.rack.app.ui.theme.RecompTheme
 
 /**
@@ -30,12 +32,18 @@ import de.rack.app.ui.theme.RecompTheme
 @Composable
 internal fun PerExerciseInputs(
     entries: ExerciseEntries,
+    unit: WeightUnit,
     onWeightChange: (String) -> Unit,
     onRirChange: (String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.Bottom) {
-        SessionField(label = "KG", value = entries.weight, keyboard = KeyboardType.Decimal, onChange = onWeightChange)
+        SessionField(
+            label = unitLabel(unit),
+            value = entries.weight,
+            keyboard = KeyboardType.Decimal,
+            onChange = onWeightChange,
+        )
         SessionField(label = "RIR", value = entries.rir, keyboard = KeyboardType.Number, onChange = onRirChange)
     }
 }

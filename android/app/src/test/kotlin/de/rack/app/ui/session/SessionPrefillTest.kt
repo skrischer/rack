@@ -2,6 +2,7 @@ package de.rack.app.ui.session
 
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
+import de.rack.app.domain.WeightUnit
 import de.rack.app.ui.theme.SupersetKind
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -20,7 +21,7 @@ class SessionPrefillTest {
         val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
         val last = log("a", weight = 60.0, reps = listOf(8, 7, 6), rir = 2)
 
-        val entries = prefillEntries(listOf(exercise), mapOf("a" to last)).getValue("a")
+        val entries = prefillEntries(listOf(exercise), mapOf("a" to last), WeightUnit.KG).getValue("a")
 
         assertEquals("60", entries.weight)
         assertEquals("2", entries.rir)
@@ -28,10 +29,21 @@ class SessionPrefillTest {
     }
 
     @Test
+    fun `prefill converts the last log weight to the selected unit`() {
+        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        // 61.25 kg -> 135.0 lb at 0.5 lb steps.
+        val last = log("a", weight = 61.25, reps = listOf(8), rir = 2)
+
+        val entries = prefillEntries(listOf(exercise), mapOf("a" to last), WeightUnit.LB).getValue("a")
+
+        assertEquals("135", entries.weight)
+    }
+
+    @Test
     fun `prefill falls back to target rir and target reps with no last log`() {
         val exercise = exercise("a", target = "4 x 5-8", rir = 2, label = null)
 
-        val entries = prefillEntries(listOf(exercise), emptyMap()).getValue("a")
+        val entries = prefillEntries(listOf(exercise), emptyMap(), WeightUnit.KG).getValue("a")
 
         assertEquals("", entries.weight)
         assertEquals("2", entries.rir)

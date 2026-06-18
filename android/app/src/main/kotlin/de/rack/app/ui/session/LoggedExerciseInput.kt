@@ -1,6 +1,8 @@
 package de.rack.app.ui.session
 
 import de.rack.app.data.LoggingRepository
+import de.rack.app.domain.WeightUnit
+import de.rack.app.domain.displayToKg
 
 /*
  * Helpers the SessionPlayerViewModel uses to confirm-save a finished session to
@@ -24,15 +26,16 @@ data class LoggedExerciseInput(
 /**
  * The per-exercise inputs to persist for the finished [SessionPlayerUiState]: one entry
  * per summary line (so skipped exercises are already excluded), each carrying the
- * exercise's single kg/RIR parsed from its entries and the reps of its ticked sets.
- * Empty when the session has no summary (still running) or logged nothing.
+ * exercise's single weight (entered in [unit], converted to canonical kg) and RIR parsed
+ * from its entries and the reps of its ticked sets. Empty when the session has no summary
+ * (still running) or logged nothing.
  */
-fun SessionPlayerUiState.loggedInputs(): List<LoggedExerciseInput> =
+fun SessionPlayerUiState.loggedInputs(unit: WeightUnit): List<LoggedExerciseInput> =
     summary?.lines.orEmpty().map { line ->
         val entries = entriesFor(line.planExerciseId)
         LoggedExerciseInput(
             planExerciseId = line.planExerciseId,
-            weight = entries.weight.trim().toDoubleOrNull(),
+            weight = entries.weight.trim().toDoubleOrNull()?.let { displayToKg(it, unit) },
             reps = loggedReps(line.planExerciseId, done, entries),
             rir = entries.rir.trim().toIntOrNull(),
         )

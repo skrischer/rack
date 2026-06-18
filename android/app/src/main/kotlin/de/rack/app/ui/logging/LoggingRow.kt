@@ -19,6 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import de.rack.app.domain.SetLog
+import de.rack.app.domain.WeightUnit
+import de.rack.app.domain.formatWeight
+import de.rack.app.domain.unitLabel
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.theme.agentHighlight
 
@@ -33,6 +36,7 @@ import de.rack.app.ui.theme.agentHighlight
 fun LoggingRow(
     exerciseId: String,
     state: ExerciseLogState,
+    unit: WeightUnit,
     handlers: LoggingHandlers,
     modifier: Modifier = Modifier,
 ) {
@@ -41,12 +45,13 @@ fun LoggingRow(
         modifier = modifier.fillMaxWidth().padding(top = spacing.sm),
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-        LastTimeSummary(state = state, onToggleHistory = { handlers.onToggleHistory(exerciseId) })
+        LastTimeSummary(state = state, unit = unit, onToggleHistory = { handlers.onToggleHistory(exerciseId) })
         if (state.historyExpanded && state.history.isNotEmpty()) {
-            HistoryList(history = state.history, highlightedIds = state.highlightedIds)
+            HistoryList(history = state.history, unit = unit, highlightedIds = state.highlightedIds)
         }
         InputsRow(
             state = state,
+            unit = unit,
             onWeightChange = { value -> handlers.onWeightChange(exerciseId, value) },
             onRepChange = { index, value -> handlers.onRepChange(exerciseId, index, value) },
         )
@@ -57,6 +62,7 @@ fun LoggingRow(
 @Composable
 private fun LastTimeSummary(
     state: ExerciseLogState,
+    unit: WeightUnit,
     onToggleHistory: () -> Unit,
 ) {
     val colors = RecompTheme.colors
@@ -74,7 +80,7 @@ private fun LastTimeSummary(
                 .padding(horizontal = RecompTheme.spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = "Last time · ${summaryLine(last)}", style = type.lastTime, color = colors.dim)
+        Text(text = "Last time · ${summaryLine(last, unit)}", style = type.lastTime, color = colors.dim)
         Text(text = "  ▾", style = type.lastTime, color = colors.voltDim)
     }
 }
@@ -82,6 +88,7 @@ private fun LastTimeSummary(
 @Composable
 private fun HistoryList(
     history: List<SetLog>,
+    unit: WeightUnit,
     highlightedIds: Set<String>,
 ) {
     val colors = RecompTheme.colors
@@ -98,7 +105,7 @@ private fun HistoryList(
     ) {
         history.forEach { entry ->
             Text(
-                text = summaryLine(entry),
+                text = summaryLine(entry, unit),
                 style = type.history,
                 color = colors.dim,
                 modifier =
@@ -113,12 +120,18 @@ private fun HistoryList(
 @Composable
 private fun InputsRow(
     state: ExerciseLogState,
+    unit: WeightUnit,
     onWeightChange: (String) -> Unit,
     onRepChange: (Int, String) -> Unit,
 ) {
     val spacing = RecompTheme.spacing
     Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), verticalAlignment = Alignment.Bottom) {
-        LogField(label = "KG", value = state.weightInput, keyboard = KeyboardType.Decimal, onChange = onWeightChange)
+        LogField(
+            label = unitLabel(unit),
+            value = state.weightInput,
+            keyboard = KeyboardType.Decimal,
+            onChange = onWeightChange,
+        )
         repeat(state.setCount) { index ->
             LogField(
                 label = "${index + 1}",
@@ -191,15 +204,15 @@ private fun logFieldColors() =
         cursorColor = RecompTheme.colors.volt,
     )
 
-/** "weight kg · r1/r2/r3" for the last-time and history lines (· when empty). */
-private fun summaryLine(log: SetLog): String {
-    val weight = log.weight?.let { formatWeight(it) } ?: "–"
+/** "date: weight UNIT · r1/r2/r3" for the last-time and history lines (· when empty). */
+private fun summaryLine(
+    log: SetLog,
+    unit: WeightUnit,
+): String {
+    val weight = log.weight?.let { formatWeight(it, unit) } ?: "–"
     val reps = log.reps.filter { it > 0 }.joinToString(separator = "/").ifEmpty { "–" }
     val date = log.date?.takeIf { it.isNotBlank() } ?: log.loggedAt.take(DATE_PREFIX_LENGTH)
-    return "$date: $weight kg · $reps"
+    return "$date: $weight ${unit.wire} · $reps"
 }
-
-private fun formatWeight(weight: Double): String =
-    if (weight % 1.0 == 0.0) weight.toLong().toString() else weight.toString()
 
 private const val DATE_PREFIX_LENGTH = 10

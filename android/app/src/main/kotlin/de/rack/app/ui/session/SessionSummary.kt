@@ -1,6 +1,8 @@
 package de.rack.app.ui.session
 
 import de.rack.app.domain.PlanExercise
+import de.rack.app.domain.WeightUnit
+import de.rack.app.domain.displayToKg
 import de.rack.app.ui.logging.setCount
 
 /**
@@ -36,7 +38,8 @@ data class SessionSummary(
 /**
  * Aggregates the finished session into a [SessionSummary]: for every exercise in the
  * day's [exercises] order it counts the ticked sets in [done], gathers their reps from
- * the per-exercise [entries], and computes volume = weight x sum(reps). An exercise with
+ * the per-exercise [entries], and computes volume = weight x sum(reps) in canonical kg
+ * (the entered weight is in [unit] and converted with [displayToKg]). An exercise with
  * no logged set (no ticked set carrying any reps and no entered weight) is omitted,
  * mirroring the skip guard so the summary lists only what will be saved.
  */
@@ -44,10 +47,11 @@ fun buildSessionSummary(
     exercises: List<PlanExercise>,
     done: List<SessionStep>,
     entries: Map<String, ExerciseEntries>,
+    unit: WeightUnit,
 ): SessionSummary {
     val lines =
         exercises.mapNotNull { exercise ->
-            summaryLine(exercise, done, entries[exercise.id] ?: ExerciseEntries())
+            summaryLine(exercise, done, entries[exercise.id] ?: ExerciseEntries(), unit)
         }
     return SessionSummary(
         lines = lines,
@@ -59,16 +63,17 @@ private fun summaryLine(
     exercise: PlanExercise,
     done: List<SessionStep>,
     entries: ExerciseEntries,
+    unit: WeightUnit,
 ): SessionSummaryLine? {
     val reps = loggedReps(exercise.id, done, entries)
-    val weight = entries.weight.trim().toDoubleOrNull()
-    if (reps.isEmpty() && weight == null) return null
+    val weightKg = entries.weight.trim().toDoubleOrNull()?.let { displayToKg(it, unit) }
+    if (reps.isEmpty() && weightKg == null) return null
     return SessionSummaryLine(
         planExerciseId = exercise.id,
         name = exercise.name,
         setsDone = reps.size,
         targetSets = setCount(exercise.target),
-        volume = (weight ?: 0.0) * reps.sum(),
+        volume = (weightKg ?: 0.0) * reps.sum(),
     )
 }
 

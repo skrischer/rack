@@ -6,12 +6,14 @@ import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
+import de.rack.app.data.SettingsRepository
 import de.rack.app.data.TrainingRepository
 import de.rack.app.data.whileForeground
 import de.rack.app.domain.HighlightTracker
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.SetLogChange
 import de.rack.app.domain.SetLogEvent
+import de.rack.app.domain.displayToKg
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +45,7 @@ class LoggingViewModel(
     private val training: TrainingRepository,
     private val logging: LoggingRepository,
     private val realtime: RealtimeRepository,
+    private val settings: SettingsRepository,
     connectivity: ConnectivityObserver,
     lifecycle: AppLifecycleObserver,
 ) : ViewModel() {
@@ -52,6 +55,11 @@ class LoggingViewModel(
     private val highlights = HighlightTracker(viewModelScope)
 
     init {
+        viewModelScope.launch {
+            // Reflect the selected unit into state so every weight surface re-renders
+            // on a switch; storage stays canonical kg (docs/specs/spec-settings.md).
+            settings.weightUnit.collect { unit -> _uiState.update { it.copy(weightUnit = unit) } }
+        }
         viewModelScope.launch {
             connectivity.onAvailable().collect { flushPending() }
         }
@@ -118,7 +126,8 @@ class LoggingViewModel(
     private fun ExerciseLogState.buildPendingFor(planExerciseId: String) =
         this@LoggingViewModel.logging.buildLog(
             planExerciseId = planExerciseId,
-            weight = weightInput.trim().toDoubleOrNull(),
+            // The user types in the selected unit; persist the canonical kg value.
+            weight = weightInput.trim().toDoubleOrNull()?.let { displayToKg(it, _uiState.value.weightUnit) },
             reps = repsInputs.mapNotNull { it.trim().toIntOrNull() },
             rir = null,
         )

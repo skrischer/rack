@@ -3,6 +3,7 @@ package de.rack.app.ui.logging
 import de.rack.app.domain.ChangeEvent
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.SetLogChange
+import de.rack.app.domain.WeightUnit
 
 /**
  * The logging UI state for a single exercise: the inputs being edited, the loaded
@@ -84,7 +85,12 @@ data class ExerciseLogState(
     }
 }
 
-/** The logging state for every exercise on screen, keyed by `plan_exercise_id`. */
+/**
+ * The logging state for every exercise on screen, keyed by `plan_exercise_id`, plus
+ * the selected [weightUnit] every weight surface displays in and converts entries from
+ * (storage stays canonical kg).
+ */
 data class LoggingUiState(
     val byExercise: Map<String, ExerciseLogState> = emptyMap(),
+    val weightUnit: WeightUnit = WeightUnit.KG,
 )

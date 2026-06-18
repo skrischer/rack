@@ -202,7 +202,12 @@ private fun ExerciseRow(
             }
         }
         logging.state.byExercise[exercise.id]?.let { state ->
-            LoggingRow(exerciseId = exercise.id, state = state, handlers = logging.handlers)
+            LoggingRow(
+                exerciseId = exercise.id,
+                state = state,
+                unit = logging.state.weightUnit,
+                handlers = logging.handlers,
+            )
         }
     }
 }
