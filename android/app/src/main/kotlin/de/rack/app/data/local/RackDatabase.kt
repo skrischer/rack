@@ -17,17 +17,25 @@ class RepsConverter {
 }
 
 /**
- * The local cache database. Holds only the unsynced-log queue ([PendingLogEntity]);
- * all server reads still go through Supabase. Constructed once via [create] and
- * owned by the DI container.
+ * The local cache database. Holds only the unsynced-log queue ([PendingLogEntity]) and
+ * the in-progress guided-session draft ([SessionDraftEntity]); all server reads still go
+ * through Supabase. Constructed once via [create] and owned by the DI container.
+ *
+ * The cache mirrors no server-authoritative data, so a schema bump falls back to a
+ * destructive recreate: at worst an unsynced log or an in-progress draft is dropped on
+ * upgrade, never a confirmed `set_logs` row (those live in Supabase).
  */
-@Database(entities = [PendingLogEntity::class], version = 1, exportSchema = false)
+@Database(entities = [PendingLogEntity::class, SessionDraftEntity::class], version = 2, exportSchema = false)
 @TypeConverters(RepsConverter::class)
 abstract class RackDatabase : RoomDatabase() {
     abstract fun pendingLogDao(): PendingLogDao
 
+    abstract fun sessionDraftDao(): SessionDraftDao
+
     companion object {
         fun create(context: Context): RackDatabase =
-            Room.databaseBuilder(context, RackDatabase::class.java, "rack.db").build()
+            Room.databaseBuilder(context, RackDatabase::class.java, "rack.db")
+                .fallbackToDestructiveMigration()
+                .build()
     }
 }

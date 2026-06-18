@@ -43,14 +43,31 @@ data class ExerciseEntries(
     ): ExerciseEntries = copy(reps = reps + (setIndex to value))
 }
 
+/** The persist phase of the finished session's confirm-save to `set_logs`. */
+enum class SessionSaveState {
+    /** Not saving: the summary is shown awaiting confirm or abandon. */
+    IDLE,
+
+    /** The confirm write to `set_logs` is in flight. */
+    SAVING,
+
+    /** Every logged exercise has been written; the player can close. */
+    SAVED,
+
+    /** The confirm write failed; the summary stays so the user can retry. */
+    ERROR,
+}
+
 /**
  * The session player's observable state: the [focused] step (the exercise + set in
  * focus), the [remaining] steps still to tick after it (in player order), the
  * already-[done] steps, the per-exercise working [entries] keyed by
  * `plan_exercise_id`, and the per-exercise last-logged [references] (the "last time"
  * summary line) shown for the focused exercise. When [focused] is null every step has
- * been ticked and the session is ready for its summary. All stepping/rotation lives in
- * the ViewModel; the screen renders this state and emits events only.
+ * been ticked and the session is finished: [summary] then holds the per-exercise
+ * sets-done/volume aggregation and [saveState] the confirm-save phase. All
+ * stepping/rotation/aggregation lives in the ViewModel; the screen renders this state
+ * and emits events only.
  */
 data class SessionPlayerUiState(
     val focused: SessionStep? = null,
@@ -58,6 +75,8 @@ data class SessionPlayerUiState(
     val done: List<SessionStep> = emptyList(),
     val entries: Map<String, ExerciseEntries> = emptyMap(),
     val references: Map<String, String> = emptyMap(),
+    val summary: SessionSummary? = null,
+    val saveState: SessionSaveState = SessionSaveState.IDLE,
 ) {
     /** True once the last step has been ticked and no step remains in focus. */
     val isFinished: Boolean get() = focused == null

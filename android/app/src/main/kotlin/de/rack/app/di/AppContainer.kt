@@ -9,6 +9,7 @@ import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.ExerciseRepository
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.RealtimeRepository
+import de.rack.app.data.SessionDraftRepository
 import de.rack.app.data.SupabaseClientProvider
 import de.rack.app.data.TimerController
 import de.rack.app.data.TrainingRepository
@@ -55,5 +56,9 @@ class AppContainer(
 
     val loggingRepository: LoggingRepository by lazy {
         LoggingRepository(trainingRepository, database.pendingLogDao())
+    }
+
+    val sessionDraftRepository: SessionDraftRepository by lazy {
+        SessionDraftRepository(database.sessionDraftDao())
     }
 }

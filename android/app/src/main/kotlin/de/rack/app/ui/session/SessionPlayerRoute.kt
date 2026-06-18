@@ -21,14 +21,18 @@ import de.rack.app.ui.timer.rememberNotificationPermission
  * Route entry point for the guided session player: resolves the per-[dayId]
  * [SessionPlayerViewModel] from the [container], collects its [SessionPlayerScreenState]
  * lifecycle-aware, and renders [SessionPlayerScreen], wiring the screen's edit / tick /
- * retry events to the ViewModel and [onClose] to the caller's back navigation.
+ * retry / confirm-save / abandon events to the ViewModel. The player's [closed] signal
+ * (emitted after a confirmed save or an abandon) stops the session timer and pops via
+ * [onClose] — the screen never closes directly, so an accidental back always routes
+ * through the abandon confirmation.
  *
  * It also consumes the Phase-8 timer: the shared [TimerViewModel] starts the
- * session-duration timer on open and renders the existing [TimerBar] below the player.
- * Each ticked set raises a [RestPrompt] (classified type + group context) the route
- * forwards to [TimerViewModel.onSetTicked], which owns the type -> duration map and the
- * countdown — the player adds no timer logic. Kept in the session feature package so the
- * central nav host only references it.
+ * session-duration timer on open and renders the existing [TimerBar] below the player;
+ * the timer's elapsed seconds drive the summary duration. Each ticked set raises a
+ * [RestPrompt] (classified type + group context) the route forwards to
+ * [TimerViewModel.onSetTicked], which owns the type -> duration map and the countdown —
+ * the player adds no timer logic. Kept in the session feature package so the central nav
+ * host only references it.
  */
 @Composable
 fun SessionPlayerRoute(
@@ -50,11 +54,18 @@ fun SessionPlayerRoute(
             timerViewModel.onSetTicked(type = prompt.type, context = prompt.context)
         }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.closed.collect {
+            timerViewModel.stopSession()
+            onClose()
+        }
+    }
     RestCompletionVibration(restFinished = timerViewModel.restFinished)
 
     Column(modifier = Modifier.fillMaxSize()) {
         SessionPlayerScreen(
             state = uiState,
+            durationSeconds = timerState.session?.elapsedSeconds ?: 0,
             actions =
                 SessionPlayerActions(
                     onWeightChange = viewModel::onWeightChange,
@@ -62,7 +73,8 @@ fun SessionPlayerRoute(
                     onRepsChange = viewModel::onRepsChange,
                     onTick = viewModel::tickFocused,
                     onRetry = viewModel::load,
-                    onClose = onClose,
+                    onConfirmSave = viewModel::confirmSave,
+                    onAbandon = viewModel::abandon,
                 ),
             modifier = Modifier.weight(1f),
         )
