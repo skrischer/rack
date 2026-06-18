@@ -102,6 +102,14 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:3.0.1")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.1")
 
+    // Vico (Apache-2.0): the Compose-native, Material 3 charting library backing the
+    // Phase 11 dashboards (weekly volume, per-exercise progress). The compose-m3 module
+    // brings the core compose API transitively; a Recomp-themed VicoTheme wrapper styles
+    // it in the dark theme with the volt/tag palette (see ui/theme/RecompChartTheme.kt).
+    // Pinned to 2.2.0 — the last release built against compileSdk 35; Vico 3.x / 2.3.0+
+    // require compileSdk 36, which AGP 8.7.x does not support.
+    implementation("com.patrykandpatrick.vico:compose-m3:2.2.0")
+
     // Room: the light local cache holding only UNSYNCED set logs (a pending-write
     // queue), flushed and deleted on reconnect. Reads always come from Supabase.
     val roomVersion = "2.6.1"
