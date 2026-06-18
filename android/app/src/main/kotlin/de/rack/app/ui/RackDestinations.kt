@@ -77,4 +77,16 @@ object RackDestinations {
 
     /** Builds a concrete session-player route for the given plan day id. */
     fun sessionRoute(dayId: String): String = "session/$dayId"
+
+    /**
+     * The top-level destinations that show the bottom-nav dock: the four quick-nav tiles
+     * ([PLAN], [CALENDAR], [HOME], [ARTIFACTS]) plus the overflow config screens ([KEYS],
+     * [SETTINGS]). Every other route — exercise detail/progress, the session player, artifact
+     * viewer, plate calculator (and login, which lives outside the graph) — is a detail/flow
+     * screen that hides the dock.
+     */
+    private val DOCK_ROUTES = setOf(PLAN, CALENDAR, HOME, ARTIFACTS, KEYS, SETTINGS)
+
+    /** The single source of truth for whether the bottom-nav dock is shown on [route]. */
+    fun isDockVisible(route: String?): Boolean = route != null && route in DOCK_ROUTES
 }

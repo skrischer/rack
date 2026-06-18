@@ -15,10 +15,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import de.rack.app.di.AppContainer
@@ -92,6 +94,34 @@ fun RackNavHost(
 
 @Composable
 private fun SignedInNavHost(
+    navController: NavHostController,
+    onSignOut: () -> Unit,
+) {
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    RackNavScaffold(
+        currentRoute = backStackEntry?.destination?.route,
+        onNavigate = { route -> navController.navigateTopLevel(route) },
+        onSignOut = onSignOut,
+    ) {
+        SignedInNavGraph(navController = navController, onSignOut = onSignOut)
+    }
+}
+
+/**
+ * Navigates to a top-level dock destination with bottom-nav semantics: pop back to the start
+ * destination saving its state, avoid stacking duplicate entries, and restore previously saved
+ * state so switching tiles never grows the back stack.
+ */
+private fun NavHostController.navigateTopLevel(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
+@Composable
+private fun SignedInNavGraph(
     navController: NavHostController,
     onSignOut: () -> Unit,
 ) {
