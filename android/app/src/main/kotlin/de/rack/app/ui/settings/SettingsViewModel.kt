@@ -14,7 +14,11 @@ import kotlinx.coroutines.launch
 sealed interface SettingsUiState {
     data object Loading : SettingsUiState
 
-    data class Content(val settings: UserSettings) : SettingsUiState
+    /** The loaded settings plus the read-only Auth [email] the profile section shows. */
+    data class Content(
+        val settings: UserSettings,
+        val email: String,
+    ) : SettingsUiState
 
     data class Error(val message: String) : SettingsUiState
 }
@@ -87,7 +91,8 @@ class SettingsViewModel(
     }
 
     private fun stateFor(settings: UserSettings?): SettingsUiState =
-        settings?.let { SettingsUiState.Content(it) } ?: SettingsUiState.Error(NO_SESSION_ERROR)
+        settings?.let { SettingsUiState.Content(it, repository.currentEmail().orEmpty()) }
+            ?: SettingsUiState.Error(NO_SESSION_ERROR)
 
     private fun messageFor(error: Throwable): String = error.message?.takeIf { it.isNotBlank() } ?: GENERIC_ERROR
 

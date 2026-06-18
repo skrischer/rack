@@ -51,6 +51,7 @@ import de.rack.app.ui.plan.PlanUiState
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.plan.findLoggedExerciseContext
 import de.rack.app.ui.session.SessionPlayerRoute
+import de.rack.app.ui.settings.settingsDestination
 import de.rack.app.ui.theme.RecompTheme
 import de.rack.app.ui.timer.RestCompletionVibration
 import de.rack.app.ui.timer.TimerBar
@@ -99,6 +100,7 @@ private fun SignedInNavHost(
         }
         homeDestination(navController)
         calendarDestination(navController)
+        settingsDestination(navController)
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
         }
@@ -192,6 +194,7 @@ private fun PlanRoute(
                     onOpenHome = { navController.navigate(RackDestinations.HOME) },
                     onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
                     onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
+                    onOpenSettings = { navController.navigate(RackDestinations.SETTINGS) },
                     onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
                     onStartSession = { dayId -> navController.navigate(RackDestinations.sessionRoute(dayId)) },
                 ),
