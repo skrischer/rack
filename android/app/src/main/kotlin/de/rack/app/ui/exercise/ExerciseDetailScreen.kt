@@ -35,11 +35,12 @@ fun ExerciseDetailScreen(
     state: ExerciseDetailUiState,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    onOpenProgress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        DetailTopBar(title = titleOf(state), onBack = onBack)
+        DetailTopBar(title = titleOf(state), onBack = onBack, onOpenProgress = onOpenProgress)
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (state) {
                 is ExerciseDetailUiState.Loading -> CenterSpinner()
@@ -91,6 +92,7 @@ private fun DetailContent(
 private fun DetailTopBar(
     title: String,
     onBack: () -> Unit,
+    onOpenProgress: () -> Unit,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
@@ -105,17 +107,30 @@ private fun DetailTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = title, style = type.kicker, color = colors.volt)
-        Text(
-            text = "BACK",
-            style = type.label,
-            color = colors.dim,
-            modifier =
-                Modifier
-                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                    .clickable(onClick = onBack)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            TopBarButton(text = "PROGRESS", onClick = onOpenProgress)
+            TopBarButton(text = "BACK", onClick = onBack)
+        }
     }
+}
+
+@Composable
+private fun TopBarButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    val colors = RecompTheme.colors
+    val spacing = RecompTheme.spacing
+    Text(
+        text = text,
+        style = RecompTheme.typography.label,
+        color = colors.dim,
+        modifier =
+            Modifier
+                .border(spacing.border, colors.line, RecompTheme.shapes.sm)
+                .clickable(onClick = onClick)
+                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+    )
 }
 
 @Composable
