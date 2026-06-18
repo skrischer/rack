@@ -55,7 +55,15 @@ fun LoggingRow(
             onWeightChange = { value -> handlers.onWeightChange(exerciseId, value) },
             onRepChange = { index, value -> handlers.onRepChange(exerciseId, index, value) },
         )
-        LogButton(state = state, onLog = { handlers.onLog(exerciseId) })
+        ActionRow(
+            state = state,
+            onLog = { handlers.onLog(exerciseId) },
+            // Pre-fill the kg-only calculator from the working weight only when entry is in kg;
+            // an lb entry would mis-seed the kg target, so open it blank in that unit.
+            onOpenPlateCalc = {
+                handlers.onOpenPlateCalc(if (unit == WeightUnit.KG) state.weightInput.trim() else "")
+            },
+        )
     }
 }
 
@@ -171,6 +179,21 @@ private fun LogField(
 }
 
 @Composable
+private fun ActionRow(
+    state: ExerciseLogState,
+    onLog: () -> Unit,
+    onOpenPlateCalc: () -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(RecompTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LogButton(state = state, onLog = onLog)
+        PlatesButton(onClick = onOpenPlateCalc)
+    }
+}
+
+@Composable
 private fun LogButton(
     state: ExerciseLogState,
     onLog: () -> Unit,
@@ -189,6 +212,23 @@ private fun LogButton(
             Modifier
                 .background(background, RecompTheme.shapes.md)
                 .then(if (enabled) Modifier.clickable(onClick = onLog) else Modifier)
+                .padding(horizontal = spacing.lg, vertical = spacing.md),
+    )
+}
+
+@Composable
+private fun PlatesButton(onClick: () -> Unit) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val spacing = RecompTheme.spacing
+    Text(
+        text = "PLATES",
+        style = type.label,
+        color = colors.dim,
+        modifier =
+            Modifier
+                .border(spacing.border, colors.line, RecompTheme.shapes.md)
+                .clickable(onClick = onClick)
                 .padding(horizontal = spacing.lg, vertical = spacing.md),
     )
 }

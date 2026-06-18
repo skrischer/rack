@@ -45,11 +45,12 @@ import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingHandlers
 import de.rack.app.ui.logging.LoggingSection
 import de.rack.app.ui.logging.LoggingViewModel
-import de.rack.app.ui.plan.PlanActions
 import de.rack.app.ui.plan.PlanScreen
 import de.rack.app.ui.plan.PlanUiState
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.plan.findLoggedExerciseContext
+import de.rack.app.ui.plan.planActions
+import de.rack.app.ui.plate.plateCalcDestination
 import de.rack.app.ui.session.SessionPlayerRoute
 import de.rack.app.ui.settings.settingsDestination
 import de.rack.app.ui.theme.RecompTheme
@@ -95,9 +96,7 @@ private fun SignedInNavHost(
     onSignOut: () -> Unit,
 ) {
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
-        composable(RackDestinations.PLAN) {
-            PlanRoute(navController = navController, onSignOut = onSignOut)
-        }
+        composable(RackDestinations.PLAN) { PlanRoute(navController = navController, onSignOut = onSignOut) }
         homeDestination(navController)
         calendarDestination(navController)
         settingsDestination(navController)
@@ -150,6 +149,7 @@ private fun SignedInNavHost(
                 onClose = { navController.popBackStack() },
             )
         }
+        plateCalcDestination(navController)
     }
 }
 
@@ -184,20 +184,12 @@ private fun PlanRoute(
                                 permission.request()
                                 startRestFor(timerViewModel, planState, id)
                             },
+                            onOpenPlateCalc = { weight ->
+                                navController.navigate(RackDestinations.plateCalcRoute(weight))
+                            },
                         ),
                 ),
-            actions =
-                PlanActions(
-                    onSelectPlan = planViewModel::selectPlan,
-                    onRetry = planViewModel::load,
-                    onSignOut = onSignOut,
-                    onOpenHome = { navController.navigate(RackDestinations.HOME) },
-                    onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
-                    onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
-                    onOpenSettings = { navController.navigate(RackDestinations.SETTINGS) },
-                    onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
-                    onStartSession = { dayId -> navController.navigate(RackDestinations.sessionRoute(dayId)) },
-                ),
+            actions = planActions(navController, planViewModel, onSignOut),
             modifier = Modifier.weight(1f),
         )
         TimerBar(

@@ -14,6 +14,7 @@ data class LoggingHandlers(
     val onRepChange: (planExerciseId: String, index: Int, value: String) -> Unit,
     val onToggleHistory: (planExerciseId: String) -> Unit,
     val onLog: (planExerciseId: String) -> Unit,
+    val onOpenPlateCalc: (weight: String) -> Unit,
 )
 
 /**

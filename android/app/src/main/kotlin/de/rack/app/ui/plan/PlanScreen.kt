@@ -20,9 +20,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
 import de.rack.app.domain.Plan
+import de.rack.app.ui.RackDestinations
 import de.rack.app.ui.logging.LoggingSection
 import de.rack.app.ui.theme.RecompTheme
+
+/** The plan screen's navigation/selection callbacks, bundled so the host route stays compact. */
+fun planActions(
+    navController: NavHostController,
+    planViewModel: PlanViewModel,
+    onSignOut: () -> Unit,
+): PlanActions =
+    PlanActions(
+        onSelectPlan = planViewModel::selectPlan,
+        onRetry = planViewModel::load,
+        onSignOut = onSignOut,
+        onOpenHome = { navController.navigate(RackDestinations.HOME) },
+        onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
+        onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
+        onOpenSettings = { navController.navigate(RackDestinations.SETTINGS) },
+        onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
+        onStartSession = { dayId -> navController.navigate(RackDestinations.sessionRoute(dayId)) },
+    )
 
 /**
  * Read-only plan view: a plan selector, then the selected plan's tag-colored day

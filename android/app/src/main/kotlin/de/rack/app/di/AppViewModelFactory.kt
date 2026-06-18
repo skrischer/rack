@@ -15,6 +15,7 @@ import de.rack.app.ui.home.HomeViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
+import de.rack.app.ui.plate.PlateCalcViewModel
 import de.rack.app.ui.session.SessionPlayerViewModel
 import de.rack.app.ui.settings.SettingsViewModel
 import de.rack.app.ui.timer.TimerViewModel
@@ -135,6 +136,24 @@ fun exerciseProgressViewModelFactory(
             ExerciseProgressViewModel(
                 repository = container.dashboardRepository,
                 exerciseId = exerciseId,
+            )
+        }
+    }
+
+/**
+ * Factory for the plate-calculator ViewModel, which needs a runtime [initialWeight] (the
+ * logging surface's current working weight, possibly blank). Separate from
+ * [appViewModelFactory] because its input is route-scoped, not container-scoped.
+ */
+fun plateCalcViewModelFactory(
+    container: AppContainer,
+    initialWeight: String,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            PlateCalcViewModel(
+                repository = container.plateCalcRepository,
+                initialWeight = initialWeight,
             )
         }
     }
