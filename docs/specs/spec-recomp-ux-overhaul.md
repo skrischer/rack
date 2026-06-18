@@ -105,7 +105,7 @@ lands; the spec itself is not "done"):
 | "Vorher" = the matching set index from the last logged session of that exercise | progressive-overload reference, Strong/Hevy precedent | 2026-06-18 |
 | Visual/interaction layer only — no data-model/backend change | keeps the theme bounded; data-needing screens split to feature specs | 2026-06-18 |
 | Scaffolding is temporary: retire `docs/design/` once screens are implemented | author's intent; the in-repo bundle is a build reference, not shipped | 2026-06-18 |
-| OPEN — cleanup extent: remove `docs/design/` entirely (incl. `kit.css`) vs keep `kit.css` as a living style reference; and delete the external Claude Design project or keep it as an archive | resolved at the spec-acceptance gate | — |
+| Cleanup on completion: remove `docs/design/` **entirely** (screens + `kit.css` + README) and clean its architecture/CLAUDE.md/roadmap references; **keep** the external Claude Design project as an archive | acceptance gate; `docs/design-tokens.md` stays the normative source, the bundle was build scaffolding | 2026-06-18 |
 
 ## Tracking
 
@@ -150,3 +150,6 @@ no archive):
   an ongoing re-skin theme, not a finite phase.
 - 2026-06-18: `docs/design/` is build scaffolding; a terminal cleanup issue
   removes it and its doc references once every screen issue is closed.
+- 2026-06-18: Acceptance gate — cleanup resolved: the terminal issue removes
+  `docs/design/` in full (screens + `kit.css` + README); the external Claude
+  Design project is kept as an archive (not deleted).
