@@ -44,6 +44,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
                 container.trainingRepository,
                 container.loggingRepository,
                 container.realtimeRepository,
+                container.settingsRepository,
                 container.connectivityObserver,
                 container.appLifecycleObserver,
             )
@@ -93,6 +94,7 @@ fun sessionPlayerViewModelFactory(
                 repository = container.trainingRepository,
                 logging = container.loggingRepository,
                 drafts = container.sessionDraftRepository,
+                settings = container.settingsRepository,
                 dayId = dayId,
             )
         }

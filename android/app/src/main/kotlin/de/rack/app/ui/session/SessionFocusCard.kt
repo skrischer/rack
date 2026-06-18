@@ -52,6 +52,7 @@ fun SessionFocusCard(
         SetStrip(step = step)
         PerExerciseInputs(
             entries = content.entries,
+            unit = content.weightUnit,
             onWeightChange = actions.onWeightChange,
             onRirChange = actions.onRirChange,
         )

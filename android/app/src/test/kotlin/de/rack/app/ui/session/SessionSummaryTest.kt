@@ -1,6 +1,7 @@
 package de.rack.app.ui.session
 
 import de.rack.app.domain.PlanExercise
+import de.rack.app.domain.WeightUnit
 import de.rack.app.ui.theme.SupersetKind
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -20,13 +21,25 @@ class SessionSummaryTest {
         val done = listOf(step("a", 0), step("a", 1))
         val entries = mapOf("a" to ExerciseEntries(weight = "60", rir = "1", reps = mapOf(0 to "8", 1 to "6")))
 
-        val summary = buildSessionSummary(listOf(a), done, entries)
+        val summary = buildSessionSummary(listOf(a), done, entries, WeightUnit.KG)
 
         val line = summary.lines.single()
         assertEquals(2, line.setsDone)
         assertEquals(3, line.targetSets)
         assertEquals(60.0 * (8 + 6), line.volume, 0.0)
         assertEquals(60.0 * (8 + 6), summary.totalVolume, 0.0)
+    }
+
+    @Test
+    fun `volume uses the canonical kg weight when entries are in pounds`() {
+        val a = exercise("a", target = "3 x 8")
+        val done = listOf(step("a", 0))
+        // 135 lb entry -> 61.25 kg stored -> volume in kg.
+        val entries = mapOf("a" to ExerciseEntries(weight = "135", reps = mapOf(0 to "8")))
+
+        val summary = buildSessionSummary(listOf(a), done, entries, WeightUnit.LB)
+
+        assertEquals(61.25 * 8, summary.lines.single().volume, 0.0)
     }
 
     @Test
@@ -41,7 +54,7 @@ class SessionSummaryTest {
                 "b" to ExerciseEntries(weight = "", reps = mapOf(0 to "")),
             )
 
-        val summary = buildSessionSummary(listOf(a, b), done, entries)
+        val summary = buildSessionSummary(listOf(a, b), done, entries, WeightUnit.KG)
 
         assertEquals(listOf("a"), summary.lines.map { it.planExerciseId })
     }
@@ -50,7 +63,7 @@ class SessionSummaryTest {
     fun `a fully empty session yields an empty summary`() {
         val a = exercise("a", target = "3 x 8")
 
-        val summary = buildSessionSummary(listOf(a), done = emptyList(), entries = emptyMap())
+        val summary = buildSessionSummary(listOf(a), done = emptyList(), entries = emptyMap(), unit = WeightUnit.KG)
 
         assertTrue(summary.isEmpty)
         assertEquals(0.0, summary.totalVolume, 0.0)
@@ -62,7 +75,7 @@ class SessionSummaryTest {
         val done = listOf(step("a", 0))
         val entries = mapOf("a" to ExerciseEntries(weight = "100", reps = mapOf(0 to "0")))
 
-        val summary = buildSessionSummary(listOf(a), done, entries)
+        val summary = buildSessionSummary(listOf(a), done, entries, WeightUnit.KG)
 
         val line = summary.lines.single()
         assertEquals(0, line.setsDone)

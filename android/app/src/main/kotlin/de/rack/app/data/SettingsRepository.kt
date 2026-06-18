@@ -1,10 +1,14 @@
 package de.rack.app.data
 
 import de.rack.app.domain.UserSettings
+import de.rack.app.domain.WeightUnit
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * The single Supabase access point for the user's `user_settings` row.
@@ -24,6 +28,15 @@ import io.github.jan.supabase.postgrest.query.Columns
 class SettingsRepository(
     private val client: SupabaseClient,
 ) {
+    private val _weightUnit = MutableStateFlow(WeightUnit.KG)
+
+    /**
+     * The selected display/entry weight unit, shared live so any weight surface
+     * (logging, session player) reflects a unit switch immediately without a write.
+     * Updated whenever settings are read or persisted; storage stays canonical kg.
+     */
+    val weightUnit: StateFlow<WeightUnit> = _weightUnit.asStateFlow()
+
     /**
      * The user's settings, provisioning a default row on first access. Returns
      * `null` when no session is restored (no user to attribute the row to).
@@ -31,7 +44,7 @@ class SettingsRepository(
     suspend fun getSettings(): UserSettings? {
         val userId = currentUserId() ?: return null
         ensureRow(userId)
-        return selectRow()
+        return selectRow()?.also { _weightUnit.value = it.weightUnit }
     }
 
     /**
@@ -48,6 +61,7 @@ class SettingsRepository(
             }
             .decodeSingle<UserSettingsDto>()
             .toDomain()
+            .also { _weightUnit.value = it.weightUnit }
     }
 
     /**

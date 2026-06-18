@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.SessionDraftRepository
+import de.rack.app.data.SettingsRepository
 import de.rack.app.data.TrainingRepository
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
+import de.rack.app.domain.WeightUnit
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -47,8 +49,12 @@ class SessionPlayerViewModel(
     private val repository: TrainingRepository,
     private val logging: LoggingRepository,
     private val drafts: SessionDraftRepository,
+    private val settings: SettingsRepository,
     private val dayId: String,
 ) : ViewModel() {
+    // The unit the session displays/enters weights in, captured at load so prefills,
+    // volume, and the save conversion stay consistent for the session's lifetime.
+    private val unit: WeightUnit get() = settings.weightUnit.value
     private val _uiState = MutableStateFlow<SessionPlayerScreenState>(SessionPlayerScreenState.Loading)
     val uiState: StateFlow<SessionPlayerScreenState> = _uiState.asStateFlow()
 
@@ -76,7 +82,7 @@ class SessionPlayerViewModel(
     fun load() {
         _uiState.value = SessionPlayerScreenState.Loading
         viewModelScope.launch {
-            runCatching { loadSession(repository, drafts, dayId) }
+            runCatching { loadSession(repository, drafts, dayId, unit) }
                 .onSuccess { (loaded, session) ->
                     exercises = loaded
                     _uiState.value = SessionPlayerScreenState.Content(session)
@@ -115,7 +121,7 @@ class SessionPlayerViewModel(
                     done = state.done + ticked,
                 )
             if (advanced.isFinished) {
-                advanced.copy(summary = buildSessionSummary(exercises, advanced.done, advanced.entries))
+                advanced.copy(summary = buildSessionSummary(exercises, advanced.done, advanced.entries, unit))
             } else {
                 advanced
             }
@@ -133,7 +139,7 @@ class SessionPlayerViewModel(
         if (!session.isFinished || session.summary?.isEmpty != false) return
         setSave(SessionSaveState.SAVING)
         viewModelScope.launch {
-            runCatching { logging.saveSession(session.loggedInputs()) }
+            runCatching { logging.saveSession(session.loggedInputs(unit)) }
                 .onSuccess {
                     drafts.clear(dayId)
                     setSave(SessionSaveState.SAVED)
@@ -186,13 +192,14 @@ private suspend fun loadSession(
     repository: TrainingRepository,
     drafts: SessionDraftRepository,
     dayId: String,
+    unit: WeightUnit,
 ): Pair<List<PlanExercise>, SessionPlayerUiState> {
     val exercises = repository.getPlanExercises(dayId)
     val lastLogs = lastLogsFor(repository, exercises)
-    val prefilled = prefillEntries(exercises, lastLogs)
-    val references = lastLogs.mapValues { (_, log) -> referenceLine(log) }
+    val prefilled = prefillEntries(exercises, lastLogs, unit)
+    val references = lastLogs.mapValues { (_, log) -> referenceLine(log, unit) }
     val draft = drafts.load(dayId)
-    if (draft != null) return exercises to restoreSession(exercises, prefilled, references, draft)
+    if (draft != null) return exercises to restoreSession(exercises, prefilled, references, draft, unit)
     val steps = buildSessionSteps(exercises)
     val state =
         SessionPlayerUiState(
@@ -200,6 +207,7 @@ private suspend fun loadSession(
             remaining = steps.drop(1),
             entries = prefilled,
             references = references,
+            weightUnit = unit,
         )
     return exercises to state
 }

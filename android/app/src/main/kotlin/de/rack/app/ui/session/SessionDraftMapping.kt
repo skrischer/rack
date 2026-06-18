@@ -3,6 +3,7 @@ package de.rack.app.ui.session
 import de.rack.app.data.SessionDraft
 import de.rack.app.data.SessionDraftEntries
 import de.rack.app.domain.PlanExercise
+import de.rack.app.domain.WeightUnit
 
 /*
  * Maps between the session player's UI working state ([ExerciseEntries], the stepped
@@ -34,6 +35,7 @@ fun restoreSession(
     prefilled: Map<String, ExerciseEntries>,
     references: Map<String, String>,
     draft: SessionDraft,
+    unit: WeightUnit,
 ): SessionPlayerUiState {
     val steps = buildSessionSteps(exercises)
     val cursor = draft.doneCount.coerceIn(0, steps.size)
@@ -45,6 +47,7 @@ fun restoreSession(
         done = done,
         entries = entries,
         references = references,
-        summary = if (cursor >= steps.size) buildSessionSummary(exercises, done, entries) else null,
+        summary = if (cursor >= steps.size) buildSessionSummary(exercises, done, entries, unit) else null,
+        weightUnit = unit,
     )
 }

@@ -1,5 +1,6 @@
 package de.rack.app.ui.session
 
+import de.rack.app.domain.WeightUnit
 import de.rack.app.ui.theme.SupersetKind
 
 /**
@@ -77,6 +78,7 @@ data class SessionPlayerUiState(
     val references: Map<String, String> = emptyMap(),
     val summary: SessionSummary? = null,
     val saveState: SessionSaveState = SessionSaveState.IDLE,
+    val weightUnit: WeightUnit = WeightUnit.KG,
 ) {
     /** True once the last step has been ticked and no step remains in focus. */
     val isFinished: Boolean get() = focused == null

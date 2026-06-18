@@ -75,3 +75,18 @@ fun displayToKg(
         }
     return roundToIncrement(kg, KG_ENTRY_INCREMENT)
 }
+
+/** The unit's uppercase label for field captions and lines, e.g. "KG" / "LB". */
+fun unitLabel(unit: WeightUnit): String = unit.wire.uppercase()
+
+/**
+ * The canonical kilogram [kg] formatted for display in [unit], without a trailing
+ * ".0" — the number-only text used on history lines, prefills, and summaries.
+ */
+fun formatWeight(
+    kg: Double,
+    unit: WeightUnit,
+): String {
+    val value = kgToDisplay(kg, unit)
+    return if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
+}
