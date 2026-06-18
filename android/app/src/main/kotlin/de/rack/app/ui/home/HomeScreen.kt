@@ -12,24 +12,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompEmpty
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
 import de.rack.app.ui.theme.RecompTheme
 import java.time.LocalDate
 
 /**
- * Read-only Home overview (docs/specs/spec-dashboards.md, Phase 11): the current ISO
- * week's volume breakdown (per muscle and per plan-day tag as Vico column charts), the
- * training streak stats, and the recent-sessions list (newest first), each session
- * tappable to open that date in calendar/history. Purely presentational — it renders
- * [state] and emits retry / session-open / back events upward; no Supabase access and
- * no business logic live here.
+ * Read-only Home overview (docs/design/screens/home.html): the current ISO week's volume
+ * breakdown (per muscle and per plan-day tag as Vico column charts under a total-volume
+ * badge), the training-streak hero, and the recent-sessions list (newest first), each
+ * session tappable to open that date in calendar/history. Purely presentational — it
+ * renders [state] and emits retry / session-open / back events upward; no Supabase access
+ * and no business logic live here.
  */
 @Composable
 fun HomeScreen(
@@ -40,11 +41,12 @@ fun HomeScreen(
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
         HomeTopBar(onOpenCalendar = actions.onOpenCalendar, onBack = actions.onBack)
+        RecompDivider()
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is HomeUiState.Loading -> CenterSpinner()
+                is HomeUiState.Loading -> RecompLoading()
                 is HomeUiState.Empty -> EmptyState()
-                is HomeUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is HomeUiState.Error -> RecompError(message = state.message, onRetry = actions.onRetry)
                 is HomeUiState.Content ->
                     HomeContentPane(content = state.content, onOpenSession = actions.onOpenSession)
             }
@@ -70,23 +72,15 @@ private fun HomeContentPane(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
         item { WeekVolumeSection(weekly = content.weeklyVolume, totals = content.weekTotals) }
         item { StreakSection(current = content.streak.current, longest = content.streak.longest) }
-        item { SectionKicker(text = "RECENT SESSIONS") }
+        item { SectionTitle(text = "Letzte Einheiten") }
         if (content.recentSessions.isEmpty()) {
-            item {
-                Text(
-                    text = "No sessions logged yet.",
-                    style = RecompTheme.typography.body,
-                    color = RecompTheme.colors.mutedEmpty,
-                )
-            }
+            item { RecompEmpty(text = "Noch keine Einheiten protokolliert.") }
         } else {
-            items(content.recentSessions, key = { it.date.toString() }) { session ->
-                SessionRow(session = session, onOpen = onOpenSession)
-            }
+            item { SessionsCard(sessions = content.recentSessions, onOpen = onOpenSession) }
         }
     }
 }
@@ -108,95 +102,39 @@ private fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = "OVERVIEW", style = type.kicker, color = colors.volt)
+        Text(text = "ÜBERSICHT", style = type.kicker, color = colors.volt)
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            Text(
-                text = "HISTORY",
-                style = type.label,
-                color = colors.dim,
-                modifier =
-                    Modifier
-                        .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                        .clickable(onClick = onOpenCalendar)
-                        .padding(horizontal = spacing.lg, vertical = spacing.sm),
-            )
-            HomeBackAction(onBack = onBack)
+            TopBarAction(label = "VERLAUF", onClick = onOpenCalendar)
+            TopBarAction(label = "ZURÜCK", onClick = onBack)
         }
     }
 }
 
 @Composable
-private fun HomeBackAction(onBack: () -> Unit) {
+private fun TopBarAction(
+    label: String,
+    onClick: () -> Unit,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
     Text(
-        text = "BACK",
+        text = label,
         style = type.label,
         color = colors.dim,
         modifier =
             Modifier
                 .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                .clickable(onClick = onBack)
+                .clickable(onClick = onClick)
                 .padding(horizontal = spacing.lg, vertical = spacing.sm),
     )
 }
 
 @Composable
 private fun EmptyState() {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "No training logged yet.",
-            style = type.body,
-            color = colors.mutedEmpty,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = "Log a few sets and your weekly volume, streak, and sessions appear here.",
-            style = type.body,
-            color = colors.mutedEmpty,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = message, style = type.body, color = colors.legs, textAlign = TextAlign.Center)
-        Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
-    }
+    RecompEmpty(
+        text =
+            "Noch kein Training protokolliert.\n" +
+                "Protokolliere ein paar Sätze und deine Wochenübersicht erscheint hier.",
+    )
 }
