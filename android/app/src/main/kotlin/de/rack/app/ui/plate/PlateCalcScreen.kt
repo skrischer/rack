@@ -16,14 +16,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import de.rack.app.ui.theme.RecompDivider
 import de.rack.app.ui.theme.RecompTheme
 
 /**
- * Recomp-styled plate calculator (#83, docs/specs/spec-plate-calc-1rm.md): a target-kg
- * input over the derived per-side breakdown and the persisted bar weight + inventory.
- * Purely presentational — it renders [state] and forwards each edit / back event upward;
- * the split is computed by the Phase-13 math behind the ViewModel, so no business logic
- * lives here. Phase 13 is kg-only and reads no Phase-12 unit setting.
+ * Recomp-styled plate calculator (#169, design ref docs/design/screens/plate-calc.html): a
+ * target-kg input over the derived per-side breakdown — the symmetric barbell diagram, the
+ * per-side plate list, the load equation, and an exact/short marker — plus the persisted bar
+ * weight and plate inventory editors. Purely presentational: it renders [state] and forwards
+ * each edit / back event upward; the split is computed by the Phase-13 math behind the
+ * ViewModel, so no business logic lives here. Phase 13 is kg-only.
  */
 @Composable
 fun PlateCalcScreen(
@@ -35,24 +37,22 @@ fun PlateCalcScreen(
     val spacing = RecompTheme.spacing
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
         TopBar(onBack = actions.onBack)
+        RecompDivider()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
+            item { Text(text = "PLATE CALCULATOR", style = RecompTheme.typography.kicker, color = colors.volt) }
+            item { TargetCard(value = state.targetInput, onChange = actions.onTargetChange) }
+            breakdownItems(state.breakdown)
             item {
-                PlateSection(title = "PLATE CALCULATOR") {
-                    TargetInput(value = state.targetInput, onChange = actions.onTargetChange)
-                }
-            }
-            item { BreakdownSection(breakdown = state.breakdown) }
-            item {
-                PreferencesSection(
-                    preferences = state.preferences,
-                    onBarWeightChange = actions.onBarWeightChange,
-                    onPairCountChange = actions.onPairCountChange,
+                BarSelectorRow(
+                    barWeightKg = state.preferences.barWeightKg,
+                    onBarWeightChange = actions.onBarWeightChange
                 )
             }
+            item { PlateInventoryCard(preferences = state.preferences, onPairCountChange = actions.onPairCountChange) }
         }
     }
 }
