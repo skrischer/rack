@@ -27,10 +27,15 @@ lands; the spec itself is not "done"):
 - [ ] The session player logs via a **set table** (`Satz | Vorher | kg | Wdh |
       RIR | ✓`) with a previous-performance column and a per-set check that
       auto-starts the rest timer.
-- [ ] Every remaining screen (session summary, dashboards, calendar, exercise
-      detail/progress, settings, API-keys, key-reveal, artifacts + viewer,
-      plate calculator, login) matches its `docs/design/screens/*.html`
-      reference, including loading/empty/error states.
+- [ ] Every remaining screen matches its `docs/design/screens/<screen>.html`
+      reference, including loading/empty/error states: session summary
+      (`session-summary`), Übersicht/Statistik (`home`), Verlauf (`calendar`,
+      `history-expanded`), exercise detail/progress (`exercise-detail`,
+      `exercise-progress`), settings (`settings`), API-keys (`keys`,
+      `key-reveal`), artifacts + viewer (`artifacts`, `artifact-viewer`), plate
+      calculator (`plate-calc`), login (`login`), and the shared loading/empty/
+      error states (`states`). The off-canvas overflow (`menu`) is covered by
+      the nav-dock outcome above.
 - [ ] When a screen is implemented its design scaffolding is retired: once all
       screen issues close, `docs/design/` is removed and the architecture /
       CLAUDE.md / roadmap references are cleaned up (see Decision log / the
