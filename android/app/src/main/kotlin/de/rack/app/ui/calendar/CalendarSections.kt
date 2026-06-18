@@ -6,14 +6,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import de.rack.app.domain.LoggedExerciseEntry
 import de.rack.app.domain.LoggedSetEntry
+import de.rack.app.ui.theme.RecompBadge
+import de.rack.app.ui.theme.RecompBadgeStyle
+import de.rack.app.ui.theme.RecompDivider
 import de.rack.app.ui.theme.RecompTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -28,7 +35,11 @@ import java.util.Locale
  * business logic here — only render.
  */
 
-private val SELECTED_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE dd.MM.yyyy")
+// The app UI is German throughout, so date/month/weekday names are rendered in German rather
+// than the device locale (which other screens sidestep by using numeric-only date patterns).
+internal val UI_LOCALE: Locale = Locale.GERMAN
+
+private val SELECTED_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE dd.MM.yyyy", UI_LOCALE)
 
 /** Month label plus previous/next steppers, each disabled at the history range edge. */
 @Composable
@@ -47,7 +58,13 @@ internal fun MonthNavigator(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepperButton(symbol = "‹", enabled = canGoBack, onClick = onPrevious)
-        Text(text = label, style = type.dayTitle, color = colors.txt)
+        Text(
+            text = label,
+            style = type.noteHeading,
+            color = colors.txt,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
         StepperButton(symbol = "›", enabled = canGoForward, onClick = onNext)
     }
 }
@@ -61,20 +78,17 @@ private fun StepperButton(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    var modifier =
-        Modifier
-            .border(spacing.border, colors.line, RecompTheme.shapes.md)
-            .padding(horizontal = spacing.lg, vertical = spacing.sm)
-    if (enabled) modifier = Modifier.clickable(onClick = onClick).then(modifier)
+    var modifier = Modifier.border(spacing.border, colors.line, RecompTheme.shapes.sm)
+    if (enabled) modifier = modifier.clickable(onClick = onClick)
     Text(
         text = symbol,
-        style = type.dayTitle,
-        color = if (enabled) colors.volt else colors.mutedEmpty,
-        modifier = modifier,
+        style = type.loadValue,
+        color = if (enabled) colors.dim else colors.mutedEmpty,
+        modifier = modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
     )
 }
 
-/** The selected day's disclosure: its date, then one card per logged exercise. */
+/** The selected day's disclosure: a section label, then one card listing the day's exercises. */
 @Composable
 internal fun SelectedDayDetail(
     date: LocalDate,
@@ -84,57 +98,119 @@ internal fun SelectedDayDetail(
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
     Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
-        Text(text = formatSelectedDay(date), style = type.kicker, color = colors.volt)
+        Text(
+            text = "Geloggte Einheit".uppercase(),
+            style = type.noteHeading,
+            color = colors.dim,
+        )
         if (entries.isEmpty()) {
-            Text(text = "No sets logged on this day.", style = type.body, color = colors.mutedEmpty)
+            Text(text = "Keine Sätze an diesem Tag.", style = type.body, color = colors.mutedEmpty)
         } else {
-            entries.forEach { entry -> ExerciseEntryCard(entry = entry) }
+            SessionCard(date = date, entries = entries)
+        }
+    }
+}
+
+/** The kit `.card`: a head band (date + exercise count) over hairline-separated exercise rows. */
+@Composable
+private fun SessionCard(
+    date: LocalDate,
+    entries: List<LoggedExerciseEntry>,
+) {
+    val colors = RecompTheme.colors
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RecompTheme.shapes.xl)
+                .background(colors.panel)
+                .border(RecompTheme.spacing.border, colors.line, RecompTheme.shapes.xl),
+    ) {
+        SessionHead(date = date, exerciseCount = entries.size)
+        entries.forEach { entry ->
+            RecompDivider()
+            ExerciseEntryRow(entry = entry)
         }
     }
 }
 
 @Composable
-private fun ExerciseEntryCard(entry: LoggedExerciseEntry) {
+private fun SessionHead(
+    date: LocalDate,
+    exerciseCount: Int,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Column(
+    Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(colors.panel, RecompTheme.shapes.xl)
-                .border(spacing.border, colors.line, RecompTheme.shapes.xl)
-                .padding(spacing.cardInsetH),
-        verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                .background(colors.panelElevated)
+                .padding(horizontal = spacing.cardInsetH, vertical = spacing.lg),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = entry.exerciseName, style = type.exerciseName, color = colors.txt)
-        entry.sets.forEachIndexed { index, set ->
-            Text(text = setLine(index = index, set = set), style = type.history, color = colors.dim)
+        Text(
+            text = formatSelectedDay(date),
+            style = type.loadValue,
+            color = colors.txt,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(spacing.md))
+        RecompBadge(text = exerciseCountLabel(exerciseCount), style = RecompBadgeStyle.Volt)
+    }
+}
+
+/** One logged exercise: its name on the left, one mono load line per logged set on the right. */
+@Composable
+private fun ExerciseEntryRow(entry: LoggedExerciseEntry) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val spacing = RecompTheme.spacing
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(text = entry.exerciseName, style = type.exerciseName, color = colors.txt, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(spacing.md))
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
+            entry.sets.forEach { set -> LoadLine(set = set) }
         }
     }
 }
 
-/** "Set 1 · 100 kg · 5/5/5 · RIR 2" — weight/reps/RIR in the prototype's mono history voice. */
-private fun setLine(
-    index: Int,
-    set: LoggedSetEntry,
-): String {
-    val weight = set.weight?.let { "${formatWeight(it)} kg" } ?: "BW"
+/** "85 kg · 8/7/7/6 · RIR 1" — weight/middots in txt, reps in volt, RIR in dim (kit `.ex-load`). */
+@Composable
+private fun LoadLine(set: LoggedSetEntry) {
+    val colors = RecompTheme.colors
+    val style = RecompTheme.typography.loadValue
     val reps = set.reps.filter { it > 0 }.joinToString(separator = "/").ifEmpty { "–" }
-    val rir = set.rir?.let { " · RIR $it" }.orEmpty()
-    return "SET ${index + 1} · $weight · $reps$rir"
+    val weight = set.weight?.let { "${formatWeight(it)} kg" } ?: "BW"
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(text = "$weight · ", style = style, color = colors.txt)
+        Text(text = reps, style = style, color = colors.volt)
+        set.rir?.let { rir -> Text(text = " · RIR $rir", style = style, color = colors.dim) }
+    }
 }
+
+/** German exercise-count badge copy with singular/plural agreement. */
+private fun exerciseCountLabel(count: Int): String = if (count == 1) "1 Übung" else "$count Übungen"
 
 private fun formatWeight(value: Double): String =
     if (value % 1.0 == 0.0) value.toLong().toString() else value.toString()
 
 private fun formatSelectedDay(date: LocalDate): String = date.format(SELECTED_DAY_FORMAT).uppercase()
 
-/** "JUNE 2026" month label for the navigator header. */
+/** "JUNI 2026" month label for the navigator header (German, matching the UI copy). */
 internal fun monthLabel(
     year: Int,
-    monthValue: Int
+    monthValue: Int,
 ): String {
-    val month = java.time.Month.of(monthValue).getDisplayName(TextStyle.FULL, Locale.getDefault())
+    val month = java.time.Month.of(monthValue).getDisplayName(TextStyle.FULL, UI_LOCALE)
     return "${month.uppercase()} $year"
 }

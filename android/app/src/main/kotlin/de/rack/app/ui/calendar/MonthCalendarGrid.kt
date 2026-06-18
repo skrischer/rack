@@ -7,19 +7,29 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import de.rack.app.ui.theme.RecompTheme
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
+
+// Kit `.cal-cell.marked .dot` geometry: a 5px volt dot sitting 3px under the day number.
+private val MarkedDotSize = 5.dp
+private val MarkedDotGap = 3.dp
 
 /**
  * A read-only month calendar grid (Phase 11, docs/specs/spec-dashboards.md). Renders the
@@ -62,7 +72,7 @@ private fun WeekdayHeader() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RecompTheme.spacing.xs)) {
         WEEKDAY_ORDER.forEach { weekday ->
             Text(
-                text = weekday.getDisplayName(TextStyle.NARROW, Locale.getDefault()).uppercase(),
+                text = weekday.getDisplayName(TextStyle.SHORT, UI_LOCALE),
                 style = caption,
                 color = colors.dim,
                 textAlign = TextAlign.Center,
@@ -83,17 +93,32 @@ private fun DayCell(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    var cell = modifier.aspectRatio(1f)
+    // Selected wins (volt fill); a logged-but-unselected day reads as a panel chip with
+    // a line border and a volt dot, matching kit `.cal-cell.sel` vs `.cal-cell.marked`.
+    // clip + clickable last so the tap ripple is confined to the rounded cell.
+    var cell = modifier.aspectRatio(1f).clip(RecompTheme.shapes.sm)
+    cell =
+        when {
+            isSelected -> cell.background(colors.volt)
+            isLogged -> cell.background(colors.panel).border(spacing.border, colors.line, RecompTheme.shapes.sm)
+            else -> cell
+        }
     if (day != null) cell = cell.clickable { onSelectDate(day) }
-    if (isLogged) cell = cell.background(colors.volt, RecompTheme.shapes.sm)
-    if (isSelected) cell = cell.border(spacing.border, colors.volt, RecompTheme.shapes.sm)
-    Box(modifier = cell, contentAlignment = Alignment.Center) {
+    Column(
+        modifier = cell,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
         if (day != null) {
             Text(
                 text = day.dayOfMonth.toString(),
-                style = type.loadValue,
-                color = if (isLogged) colors.bg else colors.txt,
+                style = type.loadValue.copy(fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal),
+                color = if (isSelected) colors.bg else colors.txt,
             )
+            if (isLogged && !isSelected) {
+                Spacer(Modifier.height(MarkedDotGap))
+                Box(modifier = Modifier.size(MarkedDotSize).background(colors.volt, CircleShape))
+            }
         }
     }
 }
