@@ -46,6 +46,9 @@ fun LoggingRow(
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         LastTimeSummary(state = state, unit = unit, onToggleHistory = { handlers.onToggleHistory(exerciseId) })
+        if (state.lastLog != null) {
+            OneRepMaxBadge(oneRepMaxKg = state.oneRepMaxKg, unit = unit)
+        }
         if (state.historyExpanded && state.history.isNotEmpty()) {
             HistoryList(history = state.history, unit = unit, highlightedIds = state.highlightedIds)
         }
@@ -82,6 +85,30 @@ private fun LastTimeSummary(
     ) {
         Text(text = "Last time · ${summaryLine(last, unit)}", style = type.lastTime, color = colors.dim)
         Text(text = "  ▾", style = type.lastTime, color = colors.voltDim)
+    }
+}
+
+/**
+ * The Epley 1RM estimate from the heaviest logged set, rendered next to the literal
+ * "Epley · estimate" label so the number always reads as guidance, not a true max.
+ * [oneRepMaxKg] is the canonical kg value computed in the ViewModel state; a null
+ * (a 0-rep or blank/0-weight set) renders the suppressed "—".
+ */
+@Composable
+private fun OneRepMaxBadge(
+    oneRepMaxKg: Double?,
+    unit: WeightUnit,
+) {
+    val colors = RecompTheme.colors
+    val type = RecompTheme.typography
+    val value = oneRepMaxKg?.let { "${formatWeight(it, unit)} ${unit.wire}" } ?: ESTIMATE_SUPPRESSED
+    Row(
+        modifier = Modifier.padding(horizontal = RecompTheme.spacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(RecompTheme.spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Epley · estimate", style = type.caption, color = colors.dim)
+        Text(text = value, style = type.loadValue, color = colors.volt)
     }
 }
 
@@ -216,3 +243,6 @@ private fun summaryLine(
 }
 
 private const val DATE_PREFIX_LENGTH = 10
+
+/** Shown for a 1RM that is suppressed (a 0-rep or blank/0-weight heaviest set). */
+private const val ESTIMATE_SUPPRESSED = "—"
