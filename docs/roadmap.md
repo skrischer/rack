@@ -84,7 +84,7 @@ re-prioritize):
 
 | Theme | Spec | Milestone |
 |---|---|---|
-| Recomp UX Overhaul | — | — |
+| Recomp UX Overhaul | [spec](specs/spec-recomp-ux-overhaul.md) | [#14](https://github.com/skrischer/rack/milestone/14) |
 
 - **Recomp UX Overhaul.** Bring every app surface up to the refreshed Recomp
   design language prepared in `docs/design/` (a mirror of the Claude Design
