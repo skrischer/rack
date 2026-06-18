@@ -12,23 +12,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import de.rack.app.domain.Artifact
+import de.rack.app.ui.theme.RecompBadge
+import de.rack.app.ui.theme.RecompBadgeStyle
+import de.rack.app.ui.theme.RecompChevron
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompEmpty
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
 import de.rack.app.ui.theme.RecompTheme
 
 /**
  * Read-only artifacts view: the signed-in user's agent-authored visualization
  * artifacts (name, type, date) newest first, each agent-written one marked with the
- * volt agent badge. Pull-to-refresh re-fetches the list. Purely presentational — it
- * renders [state] and emits refresh / retry / back events upward; no Supabase access
- * and no business logic live here. The viewer that renders an artifact's bytes is #44.
+ * violet agent badge. Pull-to-refresh re-fetches the list. Purely presentational — it
+ * renders [state] and emits refresh / retry / open / back events upward; no Supabase
+ * access and no business logic live here. The viewer that renders an artifact's bytes
+ * is the [ArtifactViewerScreen].
  */
 @Composable
 fun ArtifactScreen(
@@ -42,8 +50,8 @@ fun ArtifactScreen(
         ArtifactsTopBar(onBack = actions.onBack)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is ArtifactUiState.Loading -> CenterSpinner()
-                is ArtifactUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is ArtifactUiState.Loading -> RecompLoading()
+                is ArtifactUiState.Error -> RecompError(message = state.message, onRetry = actions.onRetry)
                 is ArtifactUiState.Content ->
                     ArtifactListPane(
                         artifacts = state.artifacts,
@@ -75,14 +83,51 @@ private fun ArtifactListPane(
             contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            item { Text(text = "ARTIFACTS", style = RecompTheme.typography.kicker, color = RecompTheme.colors.volt) }
-            if (artifacts.isEmpty()) {
-                item { EmptyState() }
-            } else {
-                items(artifacts, key = { it.id }) { artifact ->
-                    ArtifactRow(artifact = artifact, onOpen = onOpen)
-                }
+            item {
+                Text(
+                    text = "VOM AGENT ERSTELLT",
+                    style = RecompTheme.typography.kicker,
+                    color = RecompTheme.colors.volt,
+                )
             }
+            if (artifacts.isEmpty()) {
+                item {
+                    RecompEmpty(
+                        text =
+                            "Noch keine Artifacts.\n" +
+                                "Bitte deinen Agent um eine Visualisierung, dann nach unten ziehen.",
+                    )
+                }
+            } else {
+                item { ArtifactCard(artifacts = artifacts, onOpen = onOpen) }
+            }
+            item { FooterNote() }
+        }
+    }
+}
+
+/**
+ * The single artifacts card (kit `.card`): one navigable `.row` per artifact, each
+ * separated by the pervasive 1px hairline, newest first.
+ */
+@Composable
+private fun ArtifactCard(
+    artifacts: List<Artifact>,
+    onOpen: (String) -> Unit,
+) {
+    val colors = RecompTheme.colors
+    val spacing = RecompTheme.spacing
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RecompTheme.shapes.xl)
+                .background(colors.panel)
+                .border(spacing.border, colors.line, RecompTheme.shapes.xl),
+    ) {
+        artifacts.forEachIndexed { index, artifact ->
+            if (index > 0) RecompDivider()
+            ArtifactRow(artifact = artifact, onOpen = onOpen)
         }
     }
 }
@@ -95,50 +140,31 @@ private fun ArtifactRow(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    Column(
+    Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(colors.panel, RecompTheme.shapes.xl)
-                .border(spacing.border, colors.line, RecompTheme.shapes.xl)
                 .clickable { onOpen(artifact.id) }
-                .padding(spacing.cardInsetH),
-        verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                .padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV),
+        horizontalArrangement = Arrangement.spacedBy(spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             Text(
-                text = artifact.name?.takeIf { it.isNotBlank() } ?: "Untitled artifact",
-                style = type.exerciseName,
+                text = (artifact.name?.takeIf { it.isNotBlank() } ?: "Unbenanntes Artifact").uppercase(),
+                style = type.label,
                 color = colors.txt,
             )
-            if (artifact.isAgentAuthored) {
-                AgentBadge()
-            }
+            Text(text = metaLine(artifact), style = type.history, color = colors.dim)
         }
-        Text(text = typeLabel(artifact.type), style = type.loadValue, color = colors.volt)
-        Text(text = "CREATED ${shortDate(artifact.createdAt)}", style = type.caption, color = colors.dim)
+        if (artifact.isAgentAuthored) {
+            RecompBadge(text = "Agent", style = RecompBadgeStyle.Agent)
+        }
+        RecompChevron()
     }
-}
-
-/** Volt #c8f23a agent badge, consistent with the app's agent-edit highlighting language. */
-@Composable
-private fun AgentBadge() {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Text(
-        text = "AGENT",
-        style = type.label,
-        color = colors.bg,
-        modifier =
-            Modifier
-                .background(colors.volt, RecompTheme.shapes.sm)
-                .padding(horizontal = spacing.md, vertical = spacing.xxs),
-    )
 }
 
 @Composable
@@ -169,54 +195,20 @@ private fun ArtifactsTopBar(onBack: () -> Unit) {
     }
 }
 
+/** The kit `.foot` line: the pull-to-refresh hint, centered in the muted mono voice. */
 @Composable
-private fun EmptyState() {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text(text = "No artifacts yet.", style = type.body, color = colors.mutedEmpty)
-        Text(
-            text = "Ask your agent to author a visualization, then pull to refresh.",
-            style = type.body,
-            color = colors.mutedEmpty,
-        )
-    }
+private fun FooterNote() {
+    Text(
+        text = "Zum Aktualisieren nach unten ziehen",
+        style = RecompTheme.typography.caption,
+        color = RecompTheme.colors.dim,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
-@Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = message, style = type.body, color = colors.legs)
-        Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
-    }
-}
+/** "HTML · 17.06.2026" — the compact type + creation-date metadata line for a row. */
+private fun metaLine(artifact: Artifact): String = "${typeLabel(artifact.type)} · ${germanDate(artifact.createdAt)}"
 
 /** Map the stored MIME type to a compact uppercase label for the row; fall back to the raw value. */
 private fun typeLabel(type: String?): String =
@@ -224,8 +216,15 @@ private fun typeLabel(type: String?): String =
         "text/html" -> "HTML"
         "image/svg+xml" -> "SVG"
         "image/png" -> "PNG"
-        else -> type?.takeIf { it.isNotBlank() }?.uppercase() ?: "UNKNOWN"
+        else -> type?.takeIf { it.isNotBlank() }?.uppercase() ?: "UNBEKANNT"
     }
 
-/** Trim an ISO timestamp to its date portion for the compact list rows. */
-private fun shortDate(iso: String): String = iso.substringBefore('T').ifBlank { iso }
+/** The `yyyy-MM-dd` segment count an ISO date splits into before German reordering. */
+private const val ISO_DATE_PART_COUNT = 3
+
+/** Reformat an ISO timestamp's date part to the designs' German `dd.MM.yyyy`; fall back to the raw value. */
+private fun germanDate(iso: String): String {
+    val date = iso.substringBefore('T')
+    val parts = date.split('-')
+    return if (parts.size == ISO_DATE_PART_COUNT) "${parts[2]}.${parts[1]}.${parts[0]}" else date.ifBlank { iso }
+}
