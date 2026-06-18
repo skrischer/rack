@@ -4,6 +4,7 @@ import de.rack.app.domain.ChangeEvent
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.SetLogChange
 import de.rack.app.domain.WeightUnit
+import de.rack.app.domain.heaviestSetOneRepMax
 
 /**
  * The logging UI state for a single exercise: the inputs being edited, the loaded
@@ -23,6 +24,13 @@ data class ExerciseLogState(
 ) {
     /** The most recent logged entry, shown as the "last time" summary. */
     val lastLog: SetLog? get() = history.firstOrNull()
+
+    /**
+     * The Epley 1RM estimate (canonical kg) from the heaviest logged set, or null
+     * when no set carries a positive weight and rep. Computed here in the state held
+     * by the ViewModel's StateFlow so no estimate math runs in the Composable.
+     */
+    val oneRepMaxKg: Double? get() = heaviestSetOneRepMax(history)?.toDouble()
 
     /** True when at least one input carries a value worth logging. */
     val hasInput: Boolean
