@@ -15,12 +15,14 @@ import de.rack.app.data.ExerciseRepository
 import de.rack.app.data.LoggingRepository
 import de.rack.app.data.PlateCalcRepository
 import de.rack.app.data.RealtimeRepository
+import de.rack.app.data.ReminderRepository
 import de.rack.app.data.SessionDraftRepository
 import de.rack.app.data.SettingsRepository
 import de.rack.app.data.SupabaseClientProvider
 import de.rack.app.data.TimerController
 import de.rack.app.data.TrainingRepository
 import de.rack.app.data.local.RackDatabase
+import de.rack.app.reminders.WorkoutReminderScheduler
 import io.github.jan.supabase.SupabaseClient
 
 /**
@@ -83,5 +85,23 @@ class AppContainer(
 
     val plateCalcRepository: PlateCalcRepository by lazy {
         PlateCalcRepository(plateCalcDataStore)
+    }
+
+    // Device-local Preferences store for the workout-reminder prefs (#66); no Supabase,
+    // single file per process keyed by name.
+    private val reminderDataStore: DataStore<Preferences> by lazy {
+        PreferenceDataStoreFactory.create {
+            appContext.preferencesDataStoreFile("reminder_preferences")
+        }
+    }
+
+    val reminderRepository: ReminderRepository by lazy {
+        ReminderRepository(reminderDataStore)
+    }
+
+    // Wraps WorkManager to schedule the local workout reminder; shared by the reminder
+    // ViewModel, the WorkoutReminderWorker (self-reschedule on fire), and app-start re-arm.
+    val workoutReminderScheduler: WorkoutReminderScheduler by lazy {
+        WorkoutReminderScheduler(appContext)
     }
 }

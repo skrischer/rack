@@ -37,8 +37,11 @@ fun SettingsRoute(
     container: AppContainer,
     onBack: () -> Unit,
 ) {
-    val viewModel: SettingsViewModel = viewModel(factory = appViewModelFactory(container))
+    val factory = appViewModelFactory(container)
+    val viewModel: SettingsViewModel = viewModel(factory = factory)
+    val reminderViewModel: ReminderViewModel = viewModel(factory = factory)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val reminder by reminderViewModel.uiState.collectAsStateWithLifecycle()
     SettingsScreen(
         state = uiState,
         actions =
@@ -49,6 +52,13 @@ fun SettingsRoute(
                 onSelectTheme = viewModel::setTheme,
                 onSetRestSeconds = viewModel::setRestSeconds,
                 onDisplayNameChange = viewModel::setDisplayName,
+            ),
+        reminder = reminder,
+        reminderActions =
+            ReminderActions(
+                onSetEnabled = reminderViewModel::setEnabled,
+                onToggleDay = reminderViewModel::toggleDay,
+                onSetTime = reminderViewModel::setTime,
             ),
     )
 }

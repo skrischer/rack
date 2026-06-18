@@ -8,6 +8,12 @@
     <string name="channel_workout_reminder_name">Workout reminders</string>
     <string name="channel_workout_reminder_description">Scheduled reminders to start a workout</string>
 
+    <!-- Phase 10 local workout reminder (WorkManager) notification copy. -->
+    <string name="reminder_notification_title">Time to train</string>
+    <string name="reminder_notification_body">Your scheduled workout reminder</string>
+    <!-- Phase 10 rest-timer-done helper body (rest_timer channel; Phase 8/9 caller). -->
+    <string name="rest_timer_done_body">Your rest is complete</string>
+
     <!-- Phase 8 timers: foreground-service notification + rest-completion alert. -->
     <string name="timer_channel_name">Workout timers</string>
     <string name="timer_channel_description">Rest countdown and session timer with completion alert</string>

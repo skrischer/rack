@@ -17,6 +17,7 @@ import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.plate.PlateCalcViewModel
 import de.rack.app.ui.session.SessionPlayerViewModel
+import de.rack.app.ui.settings.ReminderViewModel
 import de.rack.app.ui.settings.SettingsViewModel
 import de.rack.app.ui.timer.TimerViewModel
 import java.time.LocalDate
@@ -33,6 +34,12 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
         initializer { ArtifactViewModel(container.artifactRepository) }
         initializer { HomeViewModel(container.dashboardRepository) }
         initializer { SettingsViewModel(container.settingsRepository) }
+        initializer {
+            ReminderViewModel(
+                container.reminderRepository,
+                container.workoutReminderScheduler,
+            )
+        }
         initializer {
             PlanViewModel(
                 container.trainingRepository,
