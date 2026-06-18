@@ -2,6 +2,8 @@ package de.rack.app.ui.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import de.rack.app.data.LoggingRepository
+import de.rack.app.data.SessionDraftRepository
 import de.rack.app.data.TrainingRepository
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
@@ -30,13 +32,21 @@ sealed interface SessionPlayerScreenState {
  * set-synchronized superset/circuit rotation), pre-fills the working entries (per-set
  * reps plus one per-exercise kg and one per-exercise RIR, matching the scalar
  * weight/rir + reps[] shape of set_logs), and holds them as the user walks through it.
+ *
  * It exposes that as [uiState] [StateFlow]; the player screen renders the focused step
- * and emits edit/tick events — no stepping, rotation, or business logic lives in
- * Composables. Persistence to `set_logs` on confirm is a later step (#60); the running
- * session is in-memory only. See docs/specs/spec-session-player.md.
+ * and emits edit/tick events — no stepping, rotation, or aggregation lives in
+ * Composables. On finishing the last step it aggregates the [SessionSummary]
+ * (per-exercise sets-done/volume); [confirmSave] persists every logged exercise to
+ * `set_logs` through the existing Phase-3 [LoggingRepository] path (one row per
+ * `plan_exercise_id`, scalar weight, scalar rir, reps[] of its ticked sets,
+ * `source='app'`, no `user_id` from the client), while [abandon] discards. The running
+ * session is cached after each change through the [SessionDraftRepository] so a
+ * backgrounded / killed app resumes the same step. See docs/specs/spec-session-player.md.
  */
 class SessionPlayerViewModel(
     private val repository: TrainingRepository,
+    private val logging: LoggingRepository,
+    private val drafts: SessionDraftRepository,
     private val dayId: String,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<SessionPlayerScreenState>(SessionPlayerScreenState.Loading)
@@ -51,18 +61,26 @@ class SessionPlayerViewModel(
      */
     val restPrompts: SharedFlow<RestPrompt> = _restPrompts.asSharedFlow()
 
+    private val _closed = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** Emits once when an abandoned or saved session should close, so the host pops back. */
+    val closed: SharedFlow<Unit> = _closed.asSharedFlow()
+
     private var exercises: List<PlanExercise> = emptyList()
 
     init {
         load()
     }
 
-    /** (Re)read the day's exercises and last logs and build the session; retried on error. */
+    /** (Re)read the day's exercises and last logs, restoring any cached draft; retried on error. */
     fun load() {
         _uiState.value = SessionPlayerScreenState.Loading
         viewModelScope.launch {
-            runCatching { buildSession() }
-                .onSuccess { session -> _uiState.value = SessionPlayerScreenState.Content(session) }
+            runCatching { loadSession(repository, drafts, dayId) }
+                .onSuccess { (loaded, session) ->
+                    exercises = loaded
+                    _uiState.value = SessionPlayerScreenState.Content(session)
+                }
                 .onFailure { error -> _uiState.value = SessionPlayerScreenState.Error(messageFor(error)) }
         }
     }
@@ -82,41 +100,58 @@ class SessionPlayerViewModel(
 
     /**
      * Tick the focused set: auto-prompt the rest timer for the ticked exercise, then
-     * move the set from [SessionPlayerUiState.remaining] into [SessionPlayerUiState.done]
-     * and focus the next remaining step. The set's reps and the exercise's kg/RIR are
-     * already captured in the entries by the edit handlers; ticking only advances the
-     * cursor. The rest prompt carries the [classifyExerciseType] result and the group
-     * context so the Phase-8 timer applies the right default; on the last step [focused]
-     * becomes null and the session is finished.
+     * move the set into [SessionPlayerUiState.done] and focus the next remaining step.
+     * On the last step [focused] becomes null and the session is finished, so the
+     * [SessionSummary] is aggregated for the confirm/abandon screen.
      */
     fun tickFocused() {
         val ticked = (_uiState.value as? SessionPlayerScreenState.Content)?.session?.focused ?: return
         restPromptFor(exercises, ticked.planExerciseId)?.let(_restPrompts::tryEmit)
         updateSession { state ->
-            state.copy(
-                focused = state.remaining.firstOrNull(),
-                remaining = state.remaining.drop(1),
-                done = state.done + ticked,
-            )
+            val advanced =
+                state.copy(
+                    focused = state.remaining.firstOrNull(),
+                    remaining = state.remaining.drop(1),
+                    done = state.done + ticked,
+                )
+            if (advanced.isFinished) {
+                advanced.copy(summary = buildSessionSummary(exercises, advanced.done, advanced.entries))
+            } else {
+                advanced
+            }
         }
     }
 
-    private suspend fun buildSession(): SessionPlayerUiState {
-        exercises = repository.getPlanExercises(dayId)
-        val lastLogs = lastLogsFor(exercises)
-        val steps = buildSessionSteps(exercises)
-        return SessionPlayerUiState(
-            focused = steps.firstOrNull(),
-            remaining = steps.drop(1),
-            entries = prefillEntries(exercises, lastLogs),
-            references = lastLogs.mapValues { (_, log) -> referenceLine(log) },
-        )
+    /**
+     * Confirm the summary: write one `set_logs` row per logged `plan_exercise_id`
+     * through the existing [LoggingRepository] (scalar weight, scalar rir, reps[] of the
+     * ticked sets, `source='app'`); on success clear the cached draft and close. The
+     * client sends no `user_id` — [LoggingRepository.buildLog] resolves it from the JWT.
+     */
+    fun confirmSave() {
+        val session = (_uiState.value as? SessionPlayerScreenState.Content)?.session ?: return
+        if (!session.isFinished || session.summary?.isEmpty != false) return
+        setSave(SessionSaveState.SAVING)
+        viewModelScope.launch {
+            runCatching { logging.saveSession(session.loggedInputs()) }
+                .onSuccess {
+                    drafts.clear(dayId)
+                    setSave(SessionSaveState.SAVED)
+                    _closed.tryEmit(Unit)
+                }
+                .onFailure { setSave(SessionSaveState.ERROR) }
+        }
     }
 
-    private suspend fun lastLogsFor(exercises: List<PlanExercise>): Map<String, SetLog> =
-        exercises.mapNotNull { exercise ->
-            repository.getSetLogs(exercise.id).firstOrNull()?.let { exercise.id to it }
-        }.toMap()
+    /** Abandon the session: discard the cached draft, write nothing, and close. */
+    fun abandon() {
+        viewModelScope.launch {
+            drafts.clear(dayId)
+            _closed.tryEmit(Unit)
+        }
+    }
+
+    private fun setSave(state: SessionSaveState) = updateSession(persist = false) { it.copy(saveState = state) }
 
     private fun editFocusedEntries(transform: (ExerciseEntries) -> ExerciseEntries) =
         updateSession { state ->
@@ -124,20 +159,62 @@ class SessionPlayerViewModel(
             state.editEntries(step.planExerciseId, transform)
         }
 
-    private fun updateSession(transform: (SessionPlayerUiState) -> SessionPlayerUiState) =
+    private fun updateSession(
+        persist: Boolean = true,
+        transform: (SessionPlayerUiState) -> SessionPlayerUiState,
+    ) {
+        var next: SessionPlayerUiState? = null
         _uiState.update { current ->
             val content = current as? SessionPlayerScreenState.Content ?: return@update current
-            content.copy(session = transform(content.session))
+            content.copy(session = transform(content.session).also { next = it })
         }
-
-    private fun messageFor(error: Throwable): String = error.message?.takeIf { it.isNotBlank() } ?: GENERIC_ERROR
-
-    private companion object {
-        const val GENERIC_ERROR = "Could not start the session. Check your connection and try again."
+        if (!persist) return
+        next?.let { s -> viewModelScope.launch { drafts.save(dayId, s.done.size, s.entries.toDraftEntries()) } }
     }
+}
+
+private const val GENERIC_ERROR = "Could not start the session. Check your connection and try again."
+
+/**
+ * Reads the day's position-ordered exercises and each one's last logged set, then builds
+ * the stepped session: a cached draft for [dayId] resumes the same step with its ticked
+ * sets and entries, otherwise a fresh session starts at the first step with target /
+ * last-logged pre-fills. Returns the exercises (retained for rest-prompt classification
+ * and summary aggregation) and the initial UI state.
+ */
+private suspend fun loadSession(
+    repository: TrainingRepository,
+    drafts: SessionDraftRepository,
+    dayId: String,
+): Pair<List<PlanExercise>, SessionPlayerUiState> {
+    val exercises = repository.getPlanExercises(dayId)
+    val lastLogs = lastLogsFor(repository, exercises)
+    val prefilled = prefillEntries(exercises, lastLogs)
+    val references = lastLogs.mapValues { (_, log) -> referenceLine(log) }
+    val draft = drafts.load(dayId)
+    if (draft != null) return exercises to restoreSession(exercises, prefilled, references, draft)
+    val steps = buildSessionSteps(exercises)
+    val state =
+        SessionPlayerUiState(
+            focused = steps.firstOrNull(),
+            remaining = steps.drop(1),
+            entries = prefilled,
+            references = references,
+        )
+    return exercises to state
 }
 
 private fun SessionPlayerUiState.editEntries(
     planExerciseId: String,
     transform: (ExerciseEntries) -> ExerciseEntries,
 ): SessionPlayerUiState = copy(entries = entries + (planExerciseId to transform(entriesFor(planExerciseId))))
+
+private suspend fun lastLogsFor(
+    repository: TrainingRepository,
+    exercises: List<PlanExercise>,
+): Map<String, SetLog> =
+    exercises.mapNotNull { exercise ->
+        repository.getSetLogs(exercise.id).firstOrNull()?.let { exercise.id to it }
+    }.toMap()
+
+private fun messageFor(error: Throwable): String = error.message?.takeIf { it.isNotBlank() } ?: GENERIC_ERROR

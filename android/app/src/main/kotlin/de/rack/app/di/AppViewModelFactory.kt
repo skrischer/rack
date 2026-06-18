@@ -84,6 +84,8 @@ fun sessionPlayerViewModelFactory(
         initializer {
             SessionPlayerViewModel(
                 repository = container.trainingRepository,
+                logging = container.loggingRepository,
+                drafts = container.sessionDraftRepository,
                 dayId = dayId,
             )
         }
