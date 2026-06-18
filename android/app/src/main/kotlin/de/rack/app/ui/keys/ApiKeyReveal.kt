@@ -2,8 +2,6 @@ package de.rack.app.ui.keys
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -23,6 +20,7 @@ import androidx.compose.ui.text.AnnotatedString
 import de.rack.app.ui.theme.RecompGhostButton
 import de.rack.app.ui.theme.RecompPrimaryButton
 import de.rack.app.ui.theme.RecompTheme
+import de.rack.app.ui.theme.recompClick
 
 /** Scrim opacity over the key list while the reveal modal is open (kit `.overlay`). */
 private const val SCRIM_ALPHA = 0.72f
@@ -57,10 +55,7 @@ fun ApiKeyReveal(
             modifier
                 .fillMaxSize()
                 .background(colors.bg.copy(alpha = SCRIM_ALPHA))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) {}
+                .recompClick(onClick = {})
                 .padding(spacing.xxl),
         contentAlignment = Alignment.Center,
     ) {
@@ -131,7 +126,7 @@ private fun RevealField(
                     text = "KOPIEREN",
                     style = type.label,
                     color = colors.voltDim,
-                    modifier = Modifier.clickable(onClick = onCopy),
+                    modifier = Modifier.recompClick(onClick = onCopy),
                 )
             }
         }

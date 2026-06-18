@@ -151,7 +151,7 @@ private fun KeyStatus(
     if (revoked) {
         RecompBadge(text = "Widerrufen", style = RecompBadgeStyle.Legs)
     } else {
-        RecompGhostButton(text = "Revoke", onClick = onRevoke)
+        RecompGhostButton(text = "Widerrufen", onClick = onRevoke)
     }
 }
 
