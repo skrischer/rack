@@ -3,15 +3,15 @@ package de.rack.app.ui.session
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,18 +22,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.window.Dialog
-import de.rack.app.domain.WeightUnit
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
 import de.rack.app.ui.theme.RecompTheme
+import de.rack.app.ui.theme.recompClick
+import de.rack.app.ui.theme.recompPress
 
 /**
  * Full-screen guided session player launched from the plan-day view. It renders the
- * load-state wrapper and, for a running session, the focused exercise/set card; on
- * finishing it renders the [SessionSummaryBody] with the per-exercise sets/volume and
- * confirm-save / discard actions (docs/specs/spec-session-player.md). Closing or pressing
- * back asks for confirmation and writes nothing — the only persistence point is the
- * summary confirm. Purely presentational: it observes [state] and [durationSeconds] and
- * forwards events through [actions]; no Supabase access and no stepping/rotation/
- * aggregation logic live here.
+ * load-state wrapper and, for a running session, the Recomp set-table view (one card per
+ * exercise with a previous column and per-set check); on finishing it renders the
+ * [SessionSummaryBody] with the per-exercise sets/volume and confirm-save / discard
+ * actions (docs/specs/spec-session-player.md). Closing or pressing back asks for
+ * confirmation and writes nothing — the only persistence point is the summary confirm.
+ * Purely presentational: it observes [state] and [durationSeconds] and forwards events
+ * through [actions]; no Supabase access and no aggregation logic live here.
  */
 @Composable
 fun SessionPlayerScreen(
@@ -46,12 +49,13 @@ fun SessionPlayerScreen(
     var confirmAbandon by remember { mutableStateOf(false) }
     val requestAbandon = { confirmAbandon = true }
     BackHandler(onBack = requestAbandon)
+    val running = (state as? SessionPlayerScreenState.Content)?.session?.finished == false
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        SessionTopBar(onClose = requestAbandon)
+        SessionTopBar(onClose = requestAbandon, onFinish = actions.onFinish, showFinish = running)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is SessionPlayerScreenState.Loading -> CenterSpinner()
-                is SessionPlayerScreenState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is SessionPlayerScreenState.Loading -> RecompLoading()
+                is SessionPlayerScreenState.Error -> RecompError(message = state.message, onRetry = actions.onRetry)
                 is SessionPlayerScreenState.Content ->
                     SessionBody(
                         session = state.session,
@@ -81,7 +85,7 @@ private fun SessionBody(
     onDiscard: () -> Unit,
 ) {
     val summary = session.summary
-    if (session.isFinished && summary != null) {
+    if (session.finished && summary != null) {
         SessionSummaryBody(
             summary = summary,
             durationSeconds = durationSeconds,
@@ -91,45 +95,18 @@ private fun SessionBody(
         )
         return
     }
-    val focused = session.focused ?: return
-    val progress = SessionProgress(done = session.done.size, total = session.done.size + 1 + session.remaining.size)
-    SessionFocusCard(
-        content =
-            SessionFocusContent(
-                step = focused,
-                entries = session.entriesFor(focused.planExerciseId),
-                reference = session.referenceFor(focused.planExerciseId),
-                rotationCueName = session.rotationCueName,
-                progress = progress,
-                weightUnit = session.weightUnit,
-            ),
+    SessionSetTableBody(
+        content = SessionRunningContent(session = session, durationSeconds = durationSeconds),
         actions = actions,
     )
 }
 
-/** Done-vs-total step counts shown as the player's progress label ("3 / 12"). */
-data class SessionProgress(
-    val done: Int,
-    val total: Int,
-)
-
-/**
- * The render data the focused-exercise card draws, bundled so the card takes one
- * parameter: the [step] in focus, its working [entries] (per-exercise kg/RIR + per-set
- * reps), the last-logged [reference] line, the "Next: <exercise>" [rotationCueName]
- * (null when there is no hand-off), and the session [progress].
- */
-data class SessionFocusContent(
-    val step: SessionStep,
-    val entries: ExerciseEntries,
-    val reference: String?,
-    val rotationCueName: String?,
-    val progress: SessionProgress,
-    val weightUnit: WeightUnit,
-)
-
 @Composable
-private fun SessionTopBar(onClose: () -> Unit) {
+private fun SessionTopBar(
+    onClose: () -> Unit,
+    onFinish: () -> Unit,
+    showFinish: Boolean,
+) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -139,20 +116,39 @@ private fun SessionTopBar(onClose: () -> Unit) {
                 .fillMaxWidth()
                 .background(colors.bg)
                 .padding(horizontal = spacing.gutter, vertical = spacing.md),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = "SESSION", style = type.kicker, color = colors.volt)
         Text(
-            text = "CLOSE",
+            text = "SCHLIESSEN",
             style = type.label,
             color = colors.dim,
             modifier =
                 Modifier
                     .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                    .clickable(onClick = onClose)
+                    .recompPress(onClick = onClose)
                     .padding(horizontal = spacing.lg, vertical = spacing.sm),
         )
+        Text(
+            text = "SESSION",
+            style = type.kicker,
+            color = colors.volt,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        if (showFinish) {
+            Text(
+                text = "BEENDEN",
+                style = type.label,
+                color = colors.bg,
+                modifier =
+                    Modifier
+                        .background(colors.volt, RecompTheme.shapes.sm)
+                        .recompPress(onClick = onFinish)
+                        .padding(horizontal = spacing.lg, vertical = spacing.sm),
+            )
+        } else {
+            Spacer(Modifier.width(spacing.huge))
+        }
     }
 }
 
@@ -174,11 +170,15 @@ private fun AbandonDialog(
                     .padding(spacing.xxl),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
         ) {
-            Text(text = "ABANDON SESSION", style = type.kicker, color = colors.legs)
-            Text(text = "Ticked sets are discarded and nothing is saved.", style = type.body, color = colors.dim)
+            Text(text = "SESSION VERWERFEN", style = type.kicker, color = colors.legs)
+            Text(
+                text = "Abgehakte Sätze werden verworfen und nichts wird gespeichert.",
+                style = type.body,
+                color = colors.dim,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm), modifier = Modifier.fillMaxWidth()) {
-                DialogButton(label = "KEEP GOING", filled = true, onClick = onDismiss, modifier = Modifier.weight(1f))
-                DialogButton(label = "ABANDON", filled = false, onClick = onConfirm, modifier = Modifier.weight(1f))
+                DialogButton(label = "WEITER", filled = true, onClick = onDismiss, modifier = Modifier.weight(1f))
+                DialogButton(label = "VERWERFEN", filled = false, onClick = onConfirm, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -204,41 +204,7 @@ private fun DialogButton(
         text = label,
         style = type.label,
         color = if (filled) colors.bg else colors.dim,
-        modifier = base.clickable(onClick = onClick).padding(vertical = spacing.md),
+        modifier = base.recompClick(onClick = onClick).padding(vertical = spacing.md),
         textAlign = TextAlign.Center,
     )
-}
-
-@Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = message, style = type.body, color = colors.legs)
-        Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
-    }
 }

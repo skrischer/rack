@@ -92,3 +92,17 @@ fun loggedReps(
         .filter { it.planExerciseId == planExerciseId }
         .sortedBy { it.setIndex }
         .mapNotNull { step -> entries.reps[step.setIndex]?.trim()?.toIntOrNull()?.takeIf { it > 0 } }
+
+/**
+ * The live total volume (canonical kg) of the ticked sets so far, for the running session
+ * stat strip: each ticked set contributes its exercise's entered weight (converted from
+ * the display unit) times the set's entered reps. Sets with no weight or no positive reps
+ * contribute zero. Pure; mirrors the summary's volume math without aggregating per line.
+ */
+fun SessionPlayerUiState.liveVolume(): Double =
+    done.sumOf { step ->
+        val exerciseEntries = entriesFor(step.planExerciseId)
+        val weightKg = exerciseEntries.weight.trim().toDoubleOrNull()?.let { displayToKg(it, weightUnit) } ?: 0.0
+        val reps = exerciseEntries.reps[step.setIndex]?.trim()?.toIntOrNull()?.takeIf { it > 0 } ?: 0
+        weightKg * reps
+    }

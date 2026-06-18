@@ -17,6 +17,46 @@ import de.rack.app.ui.theme.SupersetKind
 fun buildSessionSteps(exercises: List<PlanExercise>): List<SessionStep> =
     groupExercises(exercises).flatMap(::stepsForGroup)
 
+/**
+ * One exercise card in the set-table session view: the exercise's [name], read-only plan
+ * [target] / [rir] / [cue], its set count, and its superset/circuit [kind]. [groupStart]
+ * marks the first member of a `superset_label` run so the screen draws the group header
+ * once above it. Static for the session (derived from the position-ordered exercises); the
+ * live kg/RIR/reps and ticked state are held per `plan_exercise_id` in the ViewModel.
+ */
+data class SessionExerciseBlock(
+    val planExerciseId: String,
+    val name: String,
+    val kind: SupersetKind,
+    val setCount: Int,
+    val target: String? = null,
+    val rir: Int? = null,
+    val cue: String? = null,
+    val groupStart: Boolean = false,
+)
+
+/**
+ * Turns the day's position-ordered [exercises] into one [SessionExerciseBlock] per
+ * exercise, preserving order and tagging the first member of each superset/circuit run so
+ * the set-table view renders the group header once. Reuses [groupExercises] so the grouping
+ * matches the plan day view exactly.
+ */
+fun buildExerciseBlocks(exercises: List<PlanExercise>): List<SessionExerciseBlock> =
+    groupExercises(exercises).flatMap { group ->
+        group.exercises.mapIndexed { index, exercise ->
+            SessionExerciseBlock(
+                planExerciseId = exercise.id,
+                name = exercise.name,
+                kind = group.kind,
+                setCount = setCount(exercise.target),
+                target = exercise.target,
+                rir = exercise.rir,
+                cue = exercise.cue,
+                groupStart = group.kind != SupersetKind.NONE && index == 0,
+            )
+        }
+    }
+
 private fun stepsForGroup(group: ExerciseGroup): List<SessionStep> {
     val members = group.exercises.map { it to setCount(it.target) }
     return when (group.kind) {
