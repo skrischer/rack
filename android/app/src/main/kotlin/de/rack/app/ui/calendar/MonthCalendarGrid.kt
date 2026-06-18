@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,7 +26,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
 
 // Kit `.cal-cell.marked .dot` geometry: a 5px volt dot sitting 3px under the day number.
 private val MarkedDotSize = 5.dp
@@ -72,7 +72,7 @@ private fun WeekdayHeader() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(RecompTheme.spacing.xs)) {
         WEEKDAY_ORDER.forEach { weekday ->
             Text(
-                text = weekday.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                text = weekday.getDisplayName(TextStyle.SHORT, UI_LOCALE),
                 style = caption,
                 color = colors.dim,
                 textAlign = TextAlign.Center,
@@ -93,19 +93,17 @@ private fun DayCell(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    var cell = modifier.aspectRatio(1f)
-    if (day != null) cell = cell.clickable { onSelectDate(day) }
     // Selected wins (volt fill); a logged-but-unselected day reads as a panel chip with
     // a line border and a volt dot, matching kit `.cal-cell.sel` vs `.cal-cell.marked`.
+    // clip + clickable last so the tap ripple is confined to the rounded cell.
+    var cell = modifier.aspectRatio(1f).clip(RecompTheme.shapes.sm)
     cell =
         when {
-            isSelected -> cell.background(colors.volt, RecompTheme.shapes.sm)
-            isLogged ->
-                cell
-                    .background(colors.panel, RecompTheme.shapes.sm)
-                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
+            isSelected -> cell.background(colors.volt)
+            isLogged -> cell.background(colors.panel).border(spacing.border, colors.line, RecompTheme.shapes.sm)
             else -> cell
         }
+    if (day != null) cell = cell.clickable { onSelectDate(day) }
     Column(
         modifier = cell,
         horizontalAlignment = Alignment.CenterHorizontally,

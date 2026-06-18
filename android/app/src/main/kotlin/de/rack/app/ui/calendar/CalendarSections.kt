@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.em
 import de.rack.app.domain.LoggedExerciseEntry
 import de.rack.app.domain.LoggedSetEntry
 import de.rack.app.ui.theme.RecompBadge
@@ -36,7 +35,11 @@ import java.util.Locale
  * business logic here — only render.
  */
 
-private val SELECTED_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE dd.MM.yyyy")
+// The app UI is German throughout, so date/month/weekday names are rendered in German rather
+// than the device locale (which other screens sidestep by using numeric-only date patterns).
+internal val UI_LOCALE: Locale = Locale.GERMAN
+
+private val SELECTED_DAY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE dd.MM.yyyy", UI_LOCALE)
 
 /** Month label plus previous/next steppers, each disabled at the history range edge. */
 @Composable
@@ -57,7 +60,7 @@ internal fun MonthNavigator(
         StepperButton(symbol = "‹", enabled = canGoBack, onClick = onPrevious)
         Text(
             text = label,
-            style = type.label.copy(letterSpacing = 0.1.em),
+            style = type.noteHeading,
             color = colors.txt,
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f),
@@ -75,16 +78,13 @@ private fun StepperButton(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    var modifier =
-        Modifier
-            .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-            .padding(horizontal = spacing.md, vertical = spacing.sm)
-    if (enabled) modifier = Modifier.clickable(onClick = onClick).then(modifier)
+    var modifier = Modifier.border(spacing.border, colors.line, RecompTheme.shapes.sm)
+    if (enabled) modifier = modifier.clickable(onClick = onClick)
     Text(
         text = symbol,
         style = type.loadValue,
         color = if (enabled) colors.dim else colors.mutedEmpty,
-        modifier = modifier,
+        modifier = modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
     )
 }
 
@@ -100,7 +100,7 @@ internal fun SelectedDayDetail(
     Column(verticalArrangement = Arrangement.spacedBy(spacing.md)) {
         Text(
             text = "Geloggte Einheit".uppercase(),
-            style = type.label.copy(letterSpacing = 0.12.em),
+            style = type.noteHeading,
             color = colors.dim,
         )
         if (entries.isEmpty()) {
@@ -206,11 +206,11 @@ private fun formatWeight(value: Double): String =
 
 private fun formatSelectedDay(date: LocalDate): String = date.format(SELECTED_DAY_FORMAT).uppercase()
 
-/** "JUNE 2026" month label for the navigator header. */
+/** "JUNI 2026" month label for the navigator header (German, matching the UI copy). */
 internal fun monthLabel(
     year: Int,
     monthValue: Int,
 ): String {
-    val month = java.time.Month.of(monthValue).getDisplayName(TextStyle.FULL, Locale.getDefault())
+    val month = java.time.Month.of(monthValue).getDisplayName(TextStyle.FULL, UI_LOCALE)
     return "${month.uppercase()} $year"
 }
