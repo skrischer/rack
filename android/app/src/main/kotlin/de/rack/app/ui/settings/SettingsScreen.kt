@@ -18,9 +18,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import de.rack.app.domain.ReminderPreferences
 import de.rack.app.domain.UserSettings
 import de.rack.app.domain.WeightUnit
 import de.rack.app.ui.theme.RecompTheme
+import java.time.DayOfWeek
 
 /**
  * Recomp-styled Settings screen (Phase 12, docs/specs/spec-settings.md): edits the
@@ -33,6 +35,8 @@ import de.rack.app.ui.theme.RecompTheme
 fun SettingsScreen(
     state: SettingsUiState,
     actions: SettingsActions,
+    reminder: ReminderPreferences,
+    reminderActions: ReminderActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
@@ -43,7 +47,13 @@ fun SettingsScreen(
                 is SettingsUiState.Loading -> CenterSpinner()
                 is SettingsUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
                 is SettingsUiState.Content ->
-                    SettingsContent(settings = state.settings, email = state.email, actions = actions)
+                    SettingsContent(
+                        settings = state.settings,
+                        email = state.email,
+                        actions = actions,
+                        reminder = reminder,
+                        reminderActions = reminderActions,
+                    )
             }
         }
     }
@@ -60,11 +70,21 @@ data class SettingsActions(
     val onDisplayNameChange: (String) -> Unit,
 )
 
+/** The workout-reminder edit intents, bundled so the reminder section takes one parameter. */
+@Immutable
+data class ReminderActions(
+    val onSetEnabled: (Boolean) -> Unit,
+    val onToggleDay: (DayOfWeek) -> Unit,
+    val onSetTime: (Int, Int) -> Unit,
+)
+
 @Composable
 private fun SettingsContent(
     settings: UserSettings,
     email: String,
     actions: SettingsActions,
+    reminder: ReminderPreferences,
+    reminderActions: ReminderActions,
 ) {
     val spacing = RecompTheme.spacing
     LazyColumn(
@@ -75,6 +95,7 @@ private fun SettingsContent(
         item { UnitSection(unit = settings.weightUnit, onSelect = actions.onSelectUnit) }
         item { ThemeSection(theme = settings.theme, onSelect = actions.onSelectTheme) }
         item { RestDefaultsSection(settings = settings, onSet = actions.onSetRestSeconds) }
+        item { ReminderSection(prefs = reminder, actions = reminderActions) }
         item { ProfileSection(settings = settings, email = email, onCommit = actions.onDisplayNameChange) }
     }
 }

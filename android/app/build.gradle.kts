@@ -122,6 +122,11 @@ dependencies {
     // with no agent involvement, so they live here rather than in Supabase (#82).
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // WorkManager: schedules the local workout reminder (weekday + time) with no server
+    // round-trip; its enqueued work is persisted across app restart and device reboot, which
+    // the reminder relies on (#66, docs/specs/spec-push-notifications.md). No Firebase.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // JVM unit tests for the pure timer engine math and the StateFlow timer ViewModel.
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
