@@ -1,6 +1,10 @@
 package de.rack.app.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import de.rack.app.data.ApiKeyRepository
 import de.rack.app.data.AppLifecycleObserver
 import de.rack.app.data.ArtifactRepository
@@ -9,6 +13,7 @@ import de.rack.app.data.ConnectivityObserver
 import de.rack.app.data.DashboardRepository
 import de.rack.app.data.ExerciseRepository
 import de.rack.app.data.LoggingRepository
+import de.rack.app.data.PlateCalcRepository
 import de.rack.app.data.RealtimeRepository
 import de.rack.app.data.SessionDraftRepository
 import de.rack.app.data.SettingsRepository
@@ -66,5 +71,17 @@ class AppContainer(
 
     val sessionDraftRepository: SessionDraftRepository by lazy {
         SessionDraftRepository(database.sessionDraftDao())
+    }
+
+    // Device-local Preferences store for the plate-calculator prefs (#82); no
+    // Supabase, single file per process keyed by name.
+    private val plateCalcDataStore: DataStore<Preferences> by lazy {
+        PreferenceDataStoreFactory.create {
+            appContext.preferencesDataStoreFile("plate_calc_preferences")
+        }
+    }
+
+    val plateCalcRepository: PlateCalcRepository by lazy {
+        PlateCalcRepository(plateCalcDataStore)
     }
 }

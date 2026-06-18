@@ -117,6 +117,11 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
+    // DataStore (Preferences): device-local store for the plate-calculator
+    // preferences (bar weight + plate inventory) — derived single-device UI prefs
+    // with no agent involvement, so they live here rather than in Supabase (#82).
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+
     // JVM unit tests for the pure timer engine math and the StateFlow timer ViewModel.
     testImplementation("org.jetbrains.kotlin:kotlin-test:2.0.21")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
