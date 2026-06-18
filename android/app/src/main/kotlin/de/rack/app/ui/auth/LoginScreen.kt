@@ -144,27 +144,30 @@ private fun LoginCard(
             enabled = !state.isSubmitting,
             onImeAction = onSubmit,
         )
-        if (state.isSubmitting) {
-            RecompLoading()
-        } else {
-            RecompPrimaryButton(
-                text = "Anmelden",
-                onClick = onSubmit,
-                enabled = canSubmit,
-                fillMaxWidth = true,
-            )
-        }
-        state.errorMessage?.let { message ->
-            if (!state.isSubmitting) {
-                Text(
-                    text = message,
-                    style = RecompTheme.typography.caption,
-                    color = colors.legs,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
+        CardFoot(state = state, canSubmit = canSubmit, onSubmit = onSubmit)
+    }
+}
+
+/** The card foot (`.card-foot`): the submit CTA (or its loading state) over an inline error. */
+@Composable
+private fun CardFoot(
+    state: LoginUiState,
+    canSubmit: Boolean,
+    onSubmit: () -> Unit,
+) {
+    if (state.isSubmitting) {
+        RecompLoading()
+        return
+    }
+    RecompPrimaryButton(text = "Anmelden", onClick = onSubmit, enabled = canSubmit, fillMaxWidth = true)
+    state.errorMessage?.let { message ->
+        Text(
+            text = message,
+            style = RecompTheme.typography.caption,
+            color = RecompTheme.colors.dim,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -208,7 +211,7 @@ private fun AuthField(
             cursorBrush = SolidColor(colors.volt),
             visualTransformation = if (kind.masked) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(keyboardType = kind.keyboardType, imeAction = kind.imeAction),
-            keyboardActions = KeyboardActions(onDone = { onImeAction() }, onGo = { onImeAction() }),
+            keyboardActions = KeyboardActions(onDone = { onImeAction() }),
             interactionSource = interaction,
             modifier =
                 Modifier
