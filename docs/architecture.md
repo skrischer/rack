@@ -65,9 +65,9 @@ carries `source` ('app' | 'agent') and `updated_at`.
 - New screen / UI → an `/android` feature; data access through a repository,
   never Supabase calls inside Composables.
 - New / reworked UI visuals → follow the Recomp design system: tokens in
-  `docs/design-tokens.md` (normative) and the screen reference designs in
-  `docs/design/`. Encode tokens once in the Compose theme; compose screens from
-  that theme, never ad-hoc colors.
+  `docs/design-tokens.md` (normative) and the Compose Recomp theme components.
+  Encode tokens once in the Compose theme; compose screens from that theme,
+  never ad-hoc colors.
 - New table or policy → `/supabase/migrations`, with its RLS policy in the same
   migration.
 - A rule both app and MCP must obey → enforce it in the database (constraint,

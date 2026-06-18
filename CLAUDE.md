@@ -25,9 +25,6 @@ highlighted via Supabase Realtime.
   push/pull/legs/superset color coding) and the logging UX to match. The reusable
   **tokens** live (normative) in `docs/design-tokens.md`; the prototype's
   layout/markup is reference only, not normative.
-- `docs/design/` — refreshed Recomp **screen reference designs** (17 screens +
-  `kit.css`) for the Recomp UX Overhaul; a mirror of the Claude Design project.
-  Reference only — tokens stay normative in `docs/design-tokens.md`.
 
 ## Autonomy (within the loopkit skills)
 
