@@ -71,6 +71,13 @@ class SettingsRepository(
 
     private fun currentUserId(): String? = client.auth.currentUserOrNull()?.id
 
+    /**
+     * The signed-in user's Auth email, read from the session (never stored in
+     * `user_settings`). Returns `null` when no session is restored; the screen
+     * shows it read-only alongside the editable display name.
+     */
+    fun currentEmail(): String? = client.auth.currentUserOrNull()?.email
+
     private companion object {
         const val TABLE = "user_settings"
         const val USER_ID = "user_id"

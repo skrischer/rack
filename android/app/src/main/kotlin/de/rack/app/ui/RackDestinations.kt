@@ -11,6 +11,9 @@ object RackDestinations {
     const val KEYS = "keys"
     const val ARTIFACTS = "artifacts"
 
+    /** Settings: weight unit, theme, rest-timer defaults, and profile (Phase 12). */
+    const val SETTINGS = "settings"
+
     /** Home/overview dashboard: weekly volume, streak, and recent sessions (Phase 11). */
     const val HOME = "home"
 

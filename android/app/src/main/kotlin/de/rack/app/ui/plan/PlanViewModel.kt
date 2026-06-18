@@ -83,8 +83,9 @@ data class PlanContent(
 /**
  * The plan-screen actions, bundled so the screen takes one parameter for plan
  * selection, retry, sign-out, opening the Home overview / API-key management /
- * artifacts, opening a tapped exercise's detail (by catalog exercise id), and starting
- * a guided session for a plan day (by `plan_day_id`) instead of separate lambdas.
+ * artifacts / settings, opening a tapped exercise's detail (by catalog exercise id),
+ * and starting a guided session for a plan day (by `plan_day_id`) instead of separate
+ * lambdas.
  */
 @Immutable
 data class PlanActions(
@@ -94,6 +95,7 @@ data class PlanActions(
     val onOpenHome: () -> Unit,
     val onOpenKeys: () -> Unit,
     val onOpenArtifacts: () -> Unit,
+    val onOpenSettings: () -> Unit,
     val onOpenExercise: (String) -> Unit,
     val onStartSession: (String) -> Unit,
 )

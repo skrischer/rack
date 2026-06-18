@@ -43,6 +43,7 @@ fun PlanScreen(
             onOpenHome = actions.onOpenHome,
             onOpenKeys = actions.onOpenKeys,
             onOpenArtifacts = actions.onOpenArtifacts,
+            onOpenSettings = actions.onOpenSettings,
             onSignOut = actions.onSignOut,
         )
         Box(modifier = Modifier.weight(1f)) {
@@ -150,6 +151,7 @@ private fun TopBar(
     onOpenHome: () -> Unit,
     onOpenKeys: () -> Unit,
     onOpenArtifacts: () -> Unit,
+    onOpenSettings: () -> Unit,
     onSignOut: () -> Unit,
 ) {
     val colors = RecompTheme.colors
@@ -169,6 +171,7 @@ private fun TopBar(
             TopBarAction(label = "STATS", onClick = onOpenHome)
             TopBarAction(label = "ART", onClick = onOpenArtifacts)
             TopBarAction(label = "KEYS", onClick = onOpenKeys)
+            TopBarAction(label = "SETTINGS", onClick = onOpenSettings)
             TopBarAction(label = "SIGN OUT", onClick = onSignOut)
         }
     }

@@ -34,6 +34,10 @@ data class UserSettings(
 
         const val THEME_DARK = "dark"
 
+        // "Follow system" choice; both theme values resolve to the Recomp dark
+        // palette this phase (the prototype defines no light theme).
+        const val THEME_SYSTEM = "system"
+
         // Default rest-timer durations (seconds), matching the user_settings DB
         // column defaults: compound 150 / isolation 90 / superset 90 / circuit 45.
         const val DEFAULT_REST_COMPOUND_SECONDS = 150
