@@ -1,4 +1,4 @@
-package de.rack.app.ui.home
+package de.rack.app.ui.calendar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,80 +21,81 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import de.rack.app.ui.theme.RecompTheme
 import java.time.LocalDate
+import java.time.YearMonth
 
 /**
- * Read-only Home overview (docs/specs/spec-dashboards.md, Phase 11): the current ISO
- * week's volume breakdown (per muscle and per plan-day tag as Vico column charts), the
- * training streak stats, and the recent-sessions list (newest first), each session
- * tappable to open that date in calendar/history. Purely presentational — it renders
- * [state] and emits retry / session-open / back events upward; no Supabase access and
- * no business logic live here.
+ * Read-only calendar/history screen (docs/specs/spec-dashboards.md, Phase 11). It marks
+ * exactly the dates that have logged sets on a Monday-start month grid, expands a tapped
+ * marked day to its logged exercises (weight + per-set reps + RIR), and steps months
+ * across the full logged history — rendering empty months without a chart and an explicit
+ * Recomp empty state on zero data. Purely presentational: the read, marking, range, and
+ * selection live in [CalendarViewModel].
  */
 @Composable
-fun HomeScreen(
-    state: HomeUiState,
-    actions: HomeActions,
+fun CalendarHistoryScreen(
+    state: CalendarUiState,
+    actions: CalendarActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        HomeTopBar(onOpenCalendar = actions.onOpenCalendar, onBack = actions.onBack)
+        CalendarTopBar(onBack = actions.onBack)
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is HomeUiState.Loading -> CenterSpinner()
-                is HomeUiState.Empty -> EmptyState()
-                is HomeUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
-                is HomeUiState.Content ->
-                    HomeContentPane(content = state.content, onOpenSession = actions.onOpenSession)
+                is CalendarUiState.Loading -> CenterSpinner()
+                is CalendarUiState.Empty -> EmptyState()
+                is CalendarUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
+                is CalendarUiState.Content -> CalendarContentPane(content = state.content, actions = actions)
             }
         }
     }
 }
 
-/** The home actions, bundled so the screen takes one parameter for retry, navigation, and back. */
+/** Calendar actions bundled so the screen takes one parameter for navigation and selection. */
 @Immutable
-data class HomeActions(
+data class CalendarActions(
     val onRetry: () -> Unit,
-    val onOpenSession: (LocalDate) -> Unit,
-    val onOpenCalendar: () -> Unit,
+    val onShowMonth: (YearMonth) -> Unit,
+    val onSelectDate: (LocalDate) -> Unit,
     val onBack: () -> Unit,
 )
 
 @Composable
-private fun HomeContentPane(
-    content: HomeContent,
-    onOpenSession: (LocalDate) -> Unit,
+private fun CalendarContentPane(
+    content: CalendarContent,
+    actions: CalendarActions,
 ) {
     val spacing = RecompTheme.spacing
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        item { WeekVolumeSection(weekly = content.weeklyVolume, totals = content.weekTotals) }
-        item { StreakSection(current = content.streak.current, longest = content.streak.longest) }
-        item { SectionKicker(text = "RECENT SESSIONS") }
-        if (content.recentSessions.isEmpty()) {
-            item {
-                Text(
-                    text = "No sessions logged yet.",
-                    style = RecompTheme.typography.body,
-                    color = RecompTheme.colors.mutedEmpty,
-                )
-            }
-        } else {
-            items(content.recentSessions, key = { it.date.toString() }) { session ->
-                SessionRow(session = session, onOpen = onOpenSession)
-            }
+        item {
+            MonthNavigator(
+                label = monthLabel(content.month.year, content.month.monthValue),
+                canGoBack = content.month.isAfter(content.range.earliest),
+                canGoForward = content.month.isBefore(content.range.latest),
+                onPrevious = { actions.onShowMonth(content.month.minusMonths(1)) },
+                onNext = { actions.onShowMonth(content.month.plusMonths(1)) },
+            )
+        }
+        item {
+            MonthCalendarGrid(
+                month = content.month,
+                loggedDates = content.loggedDates,
+                selectedDate = content.selectedDate,
+                onSelectDate = actions.onSelectDate,
+            )
+        }
+        content.selectedDate?.let { date ->
+            item { SelectedDayDetail(date = date, entries = content.selectedDetail) }
         }
     }
 }
 
 @Composable
-private fun HomeTopBar(
-    onOpenCalendar: () -> Unit,
-    onBack: () -> Unit,
-) {
+private fun CalendarTopBar(onBack: () -> Unit) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
@@ -108,38 +108,18 @@ private fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = "OVERVIEW", style = type.kicker, color = colors.volt)
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            Text(
-                text = "HISTORY",
-                style = type.label,
-                color = colors.dim,
-                modifier =
-                    Modifier
-                        .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                        .clickable(onClick = onOpenCalendar)
-                        .padding(horizontal = spacing.lg, vertical = spacing.sm),
-            )
-            HomeBackAction(onBack = onBack)
-        }
+        Text(text = "HISTORY", style = type.kicker, color = colors.volt)
+        Text(
+            text = "BACK",
+            style = type.label,
+            color = colors.dim,
+            modifier =
+                Modifier
+                    .border(spacing.border, colors.line, RecompTheme.shapes.sm)
+                    .clickable(onClick = onBack)
+                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        )
     }
-}
-
-@Composable
-private fun HomeBackAction(onBack: () -> Unit) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Text(
-        text = "BACK",
-        style = type.label,
-        color = colors.dim,
-        modifier =
-            Modifier
-                .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                .clickable(onClick = onBack)
-                .padding(horizontal = spacing.lg, vertical = spacing.sm),
-    )
 }
 
 @Composable
@@ -159,7 +139,7 @@ private fun EmptyState() {
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "Log a few sets and your weekly volume, streak, and sessions appear here.",
+            text = "Log a few sets and the days you trained appear here on the calendar.",
             style = type.body,
             color = colors.mutedEmpty,
             textAlign = TextAlign.Center,

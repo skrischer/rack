@@ -14,6 +14,20 @@ object RackDestinations {
     /** Home/overview dashboard: weekly volume, streak, and recent sessions (Phase 11). */
     const val HOME = "home"
 
+    /** Optional navigation argument deep-linking the calendar to a specific logged date. */
+    const val CALENDAR_DATE_ARG = "date"
+
+    /**
+     * Calendar/history route template (Phase 11). The [CALENDAR_DATE_ARG] query argument is
+     * optional: absent it opens on the latest logged month; present (an ISO date) it deep
+     * links from a Home recent-session row to that day, selected and expanded.
+     */
+    const val CALENDAR = "calendar?$CALENDAR_DATE_ARG={$CALENDAR_DATE_ARG}"
+
+    /** Builds a concrete calendar route, optionally deep-linking to [date] (ISO-8601). */
+    fun calendarRoute(date: String? = null): String =
+        if (date == null) "calendar" else "calendar?$CALENDAR_DATE_ARG=$date"
+
     /** Navigation argument carrying the opened artifact's id into the viewer route. */
     const val ARTIFACT_ID_ARG = "artifactId"
 

@@ -8,6 +8,7 @@ import de.rack.app.timer.TimerService
 import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
+import de.rack.app.ui.calendar.CalendarViewModel
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.exercise.ExerciseProgressViewModel
 import de.rack.app.ui.home.HomeViewModel
@@ -16,6 +17,7 @@ import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
 import de.rack.app.ui.session.SessionPlayerViewModel
 import de.rack.app.ui.timer.TimerViewModel
+import java.time.LocalDate
 
 /**
  * Manual ViewModel factory wiring the container's repositories into ViewModels —
@@ -129,6 +131,25 @@ fun exerciseProgressViewModelFactory(
             ExerciseProgressViewModel(
                 repository = container.dashboardRepository,
                 exerciseId = exerciseId,
+            )
+        }
+    }
+
+/**
+ * Factory for the calendar/history ViewModel, which needs an optional runtime
+ * [initialDate] (the Home recent-session deep link) so the calendar opens on that month
+ * with that day selected. Separate from [appViewModelFactory] because its input is
+ * route-scoped, not container-scoped.
+ */
+fun calendarViewModelFactory(
+    container: AppContainer,
+    initialDate: LocalDate?,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            CalendarViewModel(
+                repository = container.dashboardRepository,
+                initialDate = initialDate,
             )
         }
     }
