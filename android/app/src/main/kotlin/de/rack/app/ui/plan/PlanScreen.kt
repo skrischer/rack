@@ -1,9 +1,6 @@
 package de.rack.app.ui.plan
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,252 +10,170 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavHostController
 import de.rack.app.domain.Plan
 import de.rack.app.ui.RackDestinations
-import de.rack.app.ui.logging.LoggingSection
+import de.rack.app.ui.theme.RecompChip
+import de.rack.app.ui.theme.RecompChipRow
+import de.rack.app.ui.theme.RecompDivider
+import de.rack.app.ui.theme.RecompEmpty
+import de.rack.app.ui.theme.RecompError
+import de.rack.app.ui.theme.RecompLoading
 import de.rack.app.ui.theme.RecompTheme
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/** The plan screen's navigation/selection callbacks, bundled so the host route stays compact. */
+/** The launcher's navigation/selection callbacks, bundled so the host route stays compact. */
 fun planActions(
     navController: NavHostController,
     planViewModel: PlanViewModel,
-    onSignOut: () -> Unit,
 ): PlanActions =
     PlanActions(
         onSelectPlan = planViewModel::selectPlan,
         onRetry = planViewModel::load,
-        onSignOut = onSignOut,
-        onOpenHome = { navController.navigate(RackDestinations.HOME) },
-        onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
-        onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
-        onOpenSettings = { navController.navigate(RackDestinations.SETTINGS) },
         onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
         onStartSession = { dayId -> navController.navigate(RackDestinations.sessionRoute(dayId)) },
     )
 
 /**
- * Read-only plan view: a plan selector, then the selected plan's tag-colored day
- * cards with their ordered exercises and superset/circuit grouping. Purely
- * presentational — it observes [state] and emits selection / sign-out / retry
- * events upward; no Supabase access and no business logic live here.
+ * Plan/Home as a launcher (docs/design/screens/plan.html): a today-hero for the next
+ * session with a "Session starten" CTA, then the selected plan's days as a compact,
+ * tappable row list. Set logging now lives in the session player, so the overview holds
+ * no inline weight/reps/RIR inputs. Purely presentational — it observes [state] and emits
+ * selection / retry / open-exercise / start-session events upward; no Supabase access and
+ * no business logic live here. Cross-screen navigation is the bottom-nav dock's job.
  */
 @Composable
 fun PlanScreen(
     state: PlanUiState,
-    logging: LoggingSection,
     actions: PlanActions,
     modifier: Modifier = Modifier,
 ) {
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
-        TopBar(
-            onOpenHome = actions.onOpenHome,
-            onOpenKeys = actions.onOpenKeys,
-            onOpenArtifacts = actions.onOpenArtifacts,
-            onOpenSettings = actions.onOpenSettings,
-            onSignOut = actions.onSignOut,
-        )
+        PlanTopBar()
+        RecompDivider()
         Box(modifier = Modifier.weight(1f)) {
             when (state) {
-                is PlanUiState.Loading -> CenterSpinner()
-                is PlanUiState.Empty -> CenterMessage(message = "No plans yet. Ask your agent to author one.")
-                is PlanUiState.Error -> ErrorPane(message = state.message, onRetry = actions.onRetry)
-                is PlanUiState.Content ->
-                    PlanContentPane(
-                        content = state.content,
-                        logging = logging,
-                        onSelectPlan = actions.onSelectPlan,
-                        onOpenExercise = actions.onOpenExercise,
-                        onStartSession = actions.onStartSession,
-                    )
+                is PlanUiState.Loading -> RecompLoading()
+                is PlanUiState.Empty -> RecompEmpty(text = "Noch kein Plan.\nLass deinen Agent einen schreiben.")
+                is PlanUiState.Error -> RecompError(message = state.message, onRetry = actions.onRetry)
+                is PlanUiState.Content -> PlanLauncherPane(content = state.content, actions = actions)
             }
         }
     }
 }
 
 @Composable
-private fun PlanContentPane(
+private fun PlanLauncherPane(
     content: PlanContent,
-    logging: LoggingSection,
-    onSelectPlan: (String) -> Unit,
-    onOpenExercise: (String) -> Unit,
-    onStartSession: (String) -> Unit,
+    actions: PlanActions,
 ) {
     val spacing = RecompTheme.spacing
+    val today = content.days.firstOrNull()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = spacing.gutter, vertical = spacing.lg),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+        item { DateKicker() }
+        if (today != null) {
+            item {
+                TodayHeroCard(
+                    dayContent = today,
+                    highlighted = today.day.id in content.highlightedIds,
+                    onStartSession = { actions.onStartSession(today.day.id) },
+                    onOpenExercise = actions.onOpenExercise,
+                )
+            }
+        }
+        item { SectionTitle(text = "Dein Plan") }
         item {
-            PlanSelector(
+            PlanChipSelector(
                 plans = content.plans,
                 selectedPlanId = content.selectedPlanId,
-                onSelectPlan = onSelectPlan,
+                onSelectPlan = actions.onSelectPlan,
             )
         }
-        items(content.days, key = { it.day.id }) { dayContent ->
-            DayCard(
-                dayContent = dayContent,
-                logging = logging,
-                highlightedIds = content.highlightedIds,
-                actions = DayCardActions(onOpenExercise = onOpenExercise, onStartSession = onStartSession),
-            )
+        if (content.days.isEmpty()) {
+            item { RecompEmpty(text = "Dieser Plan hat noch keine Tage.") }
+        } else {
+            item {
+                PlanDayList(
+                    days = content.days,
+                    highlightedIds = content.highlightedIds,
+                    onStartSession = actions.onStartSession,
+                )
+            }
         }
+        item { PlanFooter() }
     }
 }
 
+/** The day's weekday + date in the kit kicker voice (`Mittwoch · 18.06.`), resolved once. */
 @Composable
-private fun PlanSelector(
+private fun DateKicker() {
+    val kicker =
+        remember {
+            LocalDate.now()
+                .format(DateTimeFormatter.ofPattern("EEEE · dd.MM.", Locale.GERMAN))
+                .uppercase(Locale.GERMAN)
+        }
+    Text(text = kicker, style = RecompTheme.typography.kicker, color = RecompTheme.colors.volt)
+}
+
+@Composable
+private fun PlanChipSelector(
     plans: List<Plan>,
     selectedPlanId: String,
     onSelectPlan: (String) -> Unit,
 ) {
-    val type = RecompTheme.typography
-    val colors = RecompTheme.colors
-    val spacing = RecompTheme.spacing
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text(text = "PLANS", style = type.kicker, color = colors.volt)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-        ) {
-            plans.forEach { plan ->
-                PlanChip(
-                    plan = plan,
-                    selected = plan.id == selectedPlanId,
-                    onSelect = { onSelectPlan(plan.id) },
-                )
-            }
+    RecompChipRow {
+        plans.forEach { plan ->
+            RecompChip(
+                label = plan.name,
+                selected = plan.id == selectedPlanId,
+                onClick = { onSelectPlan(plan.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun PlanChip(
-    plan: Plan,
-    selected: Boolean,
-    onSelect: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    val background = if (selected) colors.volt else colors.panel
-    val textColor = if (selected) colors.bg else colors.dim
+private fun SectionTitle(text: String) {
+    Text(text = text.uppercase(), style = RecompTheme.typography.label, color = RecompTheme.colors.dim)
+}
+
+@Composable
+private fun PlanFooter() {
     Text(
-        text = plan.name.uppercase(),
-        style = type.label,
-        color = textColor,
-        modifier =
-            Modifier
-                .background(background, RecompTheme.shapes.lg)
-                .border(spacing.border, colors.line, RecompTheme.shapes.lg)
-                .clickable(onClick = onSelect)
-                .padding(horizontal = spacing.lg, vertical = spacing.sm),
+        text = "Plan vom Agent geschrieben",
+        style = RecompTheme.typography.history,
+        color = RecompTheme.colors.dim,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = RecompTheme.spacing.xs),
     )
 }
 
 @Composable
-private fun TopBar(
-    onOpenHome: () -> Unit,
-    onOpenKeys: () -> Unit,
-    onOpenArtifacts: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onSignOut: () -> Unit,
-) {
+private fun PlanTopBar() {
     val colors = RecompTheme.colors
-    val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .background(colors.bg)
-                .padding(horizontal = spacing.gutter, vertical = spacing.md),
-        horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = spacing.gutter, vertical = spacing.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = "RACK", style = type.kicker, color = colors.volt)
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-            TopBarAction(label = "STATS", onClick = onOpenHome)
-            TopBarAction(label = "ART", onClick = onOpenArtifacts)
-            TopBarAction(label = "KEYS", onClick = onOpenKeys)
-            TopBarAction(label = "SETTINGS", onClick = onOpenSettings)
-            TopBarAction(label = "SIGN OUT", onClick = onSignOut)
-        }
-    }
-}
-
-@Composable
-private fun TopBarAction(
-    label: String,
-    onClick: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Text(
-        text = label,
-        style = type.label,
-        color = colors.dim,
-        modifier =
-            Modifier
-                .border(spacing.border, colors.line, RecompTheme.shapes.sm)
-                .clickable(onClick = onClick)
-                .padding(horizontal = spacing.lg, vertical = spacing.sm),
-    )
-}
-
-@Composable
-private fun CenterSpinner() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = RecompTheme.colors.volt)
-    }
-}
-
-@Composable
-private fun CenterMessage(message: String) {
-    val colors = RecompTheme.colors
-    val spacing = RecompTheme.spacing
-    Box(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = message, style = RecompTheme.typography.body, color = colors.mutedEmpty)
-    }
-}
-
-@Composable
-private fun ErrorPane(
-    message: String,
-    onRetry: () -> Unit,
-) {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = spacing.gutter),
-        verticalArrangement = Arrangement.spacedBy(spacing.md, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = message, style = type.body, color = colors.legs)
-        Text(
-            text = "RETRY",
-            style = type.label,
-            color = colors.bg,
-            modifier =
-                Modifier
-                    .background(colors.volt, RecompTheme.shapes.md)
-                    .clickable(onClick = onRetry)
-                    .padding(horizontal = spacing.lg, vertical = spacing.sm),
-        )
+        Text(text = "RACK", style = RecompTheme.typography.kicker, color = colors.volt)
     }
 }
