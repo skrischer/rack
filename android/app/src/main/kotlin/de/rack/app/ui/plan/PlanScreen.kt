@@ -40,6 +40,7 @@ fun PlanScreen(
     val colors = RecompTheme.colors
     Column(modifier = modifier.fillMaxSize().background(colors.bg)) {
         TopBar(
+            onOpenHome = actions.onOpenHome,
             onOpenKeys = actions.onOpenKeys,
             onOpenArtifacts = actions.onOpenArtifacts,
             onSignOut = actions.onSignOut,
@@ -146,6 +147,7 @@ private fun PlanChip(
 
 @Composable
 private fun TopBar(
+    onOpenHome: () -> Unit,
     onOpenKeys: () -> Unit,
     onOpenArtifacts: () -> Unit,
     onSignOut: () -> Unit,
@@ -164,6 +166,7 @@ private fun TopBar(
     ) {
         Text(text = "RACK", style = type.kicker, color = colors.volt)
         Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+            TopBarAction(label = "STATS", onClick = onOpenHome)
             TopBarAction(label = "ART", onClick = onOpenArtifacts)
             TopBarAction(label = "KEYS", onClick = onOpenKeys)
             TopBarAction(label = "SIGN OUT", onClick = onSignOut)

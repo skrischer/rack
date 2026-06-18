@@ -25,7 +25,6 @@ import de.rack.app.di.AppContainer
 import de.rack.app.di.appViewModelFactory
 import de.rack.app.di.artifactViewerViewModelFactory
 import de.rack.app.di.exerciseDetailViewModelFactory
-import de.rack.app.di.exerciseProgressViewModelFactory
 import de.rack.app.ui.artifacts.ArtifactActions
 import de.rack.app.ui.artifacts.ArtifactScreen
 import de.rack.app.ui.artifacts.ArtifactViewModel
@@ -36,8 +35,8 @@ import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
 import de.rack.app.ui.exercise.ExerciseDetailScreen
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
-import de.rack.app.ui.exercise.ExerciseProgressScreen
-import de.rack.app.ui.exercise.ExerciseProgressViewModel
+import de.rack.app.ui.exercise.ExerciseProgressRoute
+import de.rack.app.ui.home.HomeRoute
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
@@ -97,6 +96,9 @@ private fun SignedInNavHost(
         composable(RackDestinations.PLAN) {
             PlanRoute(navController = navController, onSignOut = onSignOut)
         }
+        composable(RackDestinations.HOME) {
+            HomeRoute(container = LocalAppContainer.current, onBack = { navController.popBackStack() })
+        }
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
         }
@@ -129,12 +131,9 @@ private fun SignedInNavHost(
             arguments = listOf(navArgument(RackDestinations.EXERCISE_ID_ARG) { type = NavType.StringType }),
         ) { entry ->
             val exerciseId = entry.arguments?.getString(RackDestinations.EXERCISE_ID_ARG).orEmpty()
-            val factory = exerciseProgressViewModelFactory(LocalAppContainer.current, exerciseId)
-            val viewModel: ExerciseProgressViewModel = viewModel(key = exerciseId, factory = factory)
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-            ExerciseProgressScreen(
-                state = uiState,
-                onRetry = viewModel::load,
+            ExerciseProgressRoute(
+                container = LocalAppContainer.current,
+                exerciseId = exerciseId,
                 onBack = { navController.popBackStack() },
             )
         }
@@ -190,6 +189,7 @@ private fun PlanRoute(
                     onSelectPlan = planViewModel::selectPlan,
                     onRetry = planViewModel::load,
                     onSignOut = onSignOut,
+                    onOpenHome = { navController.navigate(RackDestinations.HOME) },
                     onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
                     onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
                     onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },

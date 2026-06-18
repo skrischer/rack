@@ -10,6 +10,7 @@ import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.exercise.ExerciseProgressViewModel
+import de.rack.app.ui.home.HomeViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanViewModel
@@ -26,6 +27,7 @@ fun appViewModelFactory(container: AppContainer): ViewModelProvider.Factory =
         initializer { AuthViewModel(container.authRepository) }
         initializer { ApiKeyViewModel(container.apiKeyRepository) }
         initializer { ArtifactViewModel(container.artifactRepository) }
+        initializer { HomeViewModel(container.dashboardRepository) }
         initializer {
             PlanViewModel(
                 container.trainingRepository,

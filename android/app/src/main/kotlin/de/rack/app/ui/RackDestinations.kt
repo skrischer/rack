@@ -11,6 +11,9 @@ object RackDestinations {
     const val KEYS = "keys"
     const val ARTIFACTS = "artifacts"
 
+    /** Home/overview dashboard: weekly volume, streak, and recent sessions (Phase 11). */
+    const val HOME = "home"
+
     /** Navigation argument carrying the opened artifact's id into the viewer route. */
     const val ARTIFACT_ID_ARG = "artifactId"
 
