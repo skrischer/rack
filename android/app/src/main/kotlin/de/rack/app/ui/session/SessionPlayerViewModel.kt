@@ -73,6 +73,7 @@ class SessionPlayerViewModel(
     val closed: SharedFlow<Unit> = _closed.asSharedFlow()
 
     private var exercises: List<PlanExercise> = emptyList()
+    private var steps: List<SessionStep> = emptyList()
 
     init {
         load()
@@ -85,48 +86,66 @@ class SessionPlayerViewModel(
             runCatching { loadSession(repository, drafts, dayId, unit) }
                 .onSuccess { (loaded, session) ->
                     exercises = loaded
+                    steps = buildSessionSteps(loaded)
                     _uiState.value = SessionPlayerScreenState.Content(session)
                 }
                 .onFailure { error -> _uiState.value = SessionPlayerScreenState.Error(messageFor(error)) }
         }
     }
 
-    /** Edit the focused exercise's single per-exercise kg input. */
-    fun onWeightChange(value: String) = editFocusedEntries { it.copy(weight = value) }
+    /** Edit an exercise's single per-exercise kg input (scalar, applied to every set). */
+    fun onWeightChange(
+        planExerciseId: String,
+        value: String,
+    ) = updateSession { it.editEntries(planExerciseId) { entries -> entries.copy(weight = value) } }
 
-    /** Edit the focused exercise's single per-exercise RIR input. */
-    fun onRirChange(value: String) = editFocusedEntries { it.copy(rir = value) }
+    /** Edit an exercise's single per-exercise RIR input (scalar, applied to every set). */
+    fun onRirChange(
+        planExerciseId: String,
+        value: String,
+    ) = updateSession { it.editEntries(planExerciseId) { entries -> entries.copy(rir = value) } }
 
-    /** Edit the reps entered for the focused set of the focused exercise. */
-    fun onRepsChange(value: String) =
-        updateSession { state ->
-            val step = state.focused ?: return@updateSession state
-            state.editEntries(step.planExerciseId) { it.withReps(step.setIndex, value) }
-        }
+    /** Edit the reps entered for one set of an exercise. */
+    fun onRepsChange(
+        planExerciseId: String,
+        setIndex: Int,
+        value: String,
+    ) = updateSession { it.editEntries(planExerciseId) { entries -> entries.withReps(setIndex, value) } }
 
     /**
-     * Tick the focused set: auto-prompt the rest timer for the ticked exercise, then
-     * move the set into [SessionPlayerUiState.done] and focus the next remaining step.
-     * On the last step [focused] becomes null and the session is finished, so the
-     * [SessionSummary] is aggregated for the confirm/abandon screen.
+     * Toggle a set's check. Ticking it on auto-prompts the rest timer for the exercise and
+     * records the set in [SessionPlayerUiState.done] (the persistence happens at
+     * confirm-save); tapping a ticked set again un-ticks it and raises no rest prompt. The
+     * session ends only when the user explicitly [finish]es it.
      */
-    fun tickFocused() {
-        val ticked = (_uiState.value as? SessionPlayerScreenState.Content)?.session?.focused ?: return
-        restPromptFor(exercises, ticked.planExerciseId)?.let(_restPrompts::tryEmit)
-        updateSession { state ->
-            val advanced =
-                state.copy(
-                    focused = state.remaining.firstOrNull(),
-                    remaining = state.remaining.drop(1),
-                    done = state.done + ticked,
-                )
-            if (advanced.isFinished) {
-                advanced.copy(summary = buildSessionSummary(exercises, advanced.done, advanced.entries, unit))
-            } else {
-                advanced
+    fun tickSet(
+        planExerciseId: String,
+        setIndex: Int,
+    ) {
+        val session = (_uiState.value as? SessionPlayerScreenState.Content)?.session ?: return
+        if (session.isSetDone(planExerciseId, setIndex)) {
+            updateSession { it.copy(done = it.done.filterNot { step -> step.matches(planExerciseId, setIndex) }) }
+        } else {
+            steps.firstOrNull { it.matches(planExerciseId, setIndex) }?.let { step ->
+                restPromptFor(exercises, planExerciseId)?.let(_restPrompts::tryEmit)
+                updateSession { it.copy(done = it.done + step) }
             }
         }
     }
+
+    /**
+     * End the session: aggregate the [SessionSummary] (per-exercise sets-done/volume) from
+     * the ticked sets and entries and flip to the confirm/abandon screen. Idempotent once
+     * finished; the actual `set_logs` write happens in [confirmSave].
+     */
+    fun finish() =
+        updateSession(persist = false) { state ->
+            if (state.finished) {
+                state
+            } else {
+                state.copy(finished = true, summary = buildSessionSummary(exercises, state.done, state.entries, unit))
+            }
+        }
 
     /**
      * Confirm the summary: write one `set_logs` row per logged `plan_exercise_id`
@@ -159,12 +178,6 @@ class SessionPlayerViewModel(
 
     private fun setSave(state: SessionSaveState) = updateSession(persist = false) { it.copy(saveState = state) }
 
-    private fun editFocusedEntries(transform: (ExerciseEntries) -> ExerciseEntries) =
-        updateSession { state ->
-            val step = state.focused ?: return@updateSession state
-            state.editEntries(step.planExerciseId, transform)
-        }
-
     private fun updateSession(
         persist: Boolean = true,
         transform: (SessionPlayerUiState) -> SessionPlayerUiState,
@@ -183,10 +196,11 @@ private const val GENERIC_ERROR = "Could not start the session. Check your conne
 
 /**
  * Reads the day's position-ordered exercises and each one's last logged set, then builds
- * the stepped session: a cached draft for [dayId] resumes the same step with its ticked
- * sets and entries, otherwise a fresh session starts at the first step with target /
- * last-logged pre-fills. Returns the exercises (retained for rest-prompt classification
- * and summary aggregation) and the initial UI state.
+ * the set-table session: a cached draft for [dayId] resumes the ticked sets and entries,
+ * otherwise a fresh session starts with target / last-logged pre-fills. The per-exercise
+ * blocks (card order + group headers) and per-set "Vorher" strings are computed once and
+ * carried on the state. Returns the exercises (retained for rest-prompt classification and
+ * summary aggregation) and the initial UI state.
  */
 private suspend fun loadSession(
     repository: TrainingRepository,
@@ -198,19 +212,22 @@ private suspend fun loadSession(
     val lastLogs = lastLogsFor(repository, exercises)
     val prefilled = prefillEntries(exercises, lastLogs, unit)
     val references = lastLogs.mapValues { (_, log) -> referenceLine(log, unit) }
+    val previous = previousSets(exercises, lastLogs, unit)
+    val blocks = buildExerciseBlocks(exercises)
     val draft = drafts.load(dayId)
-    if (draft != null) return exercises to restoreSession(exercises, prefilled, references, draft, unit)
-    val steps = buildSessionSteps(exercises)
-    val state =
-        SessionPlayerUiState(
-            focused = steps.firstOrNull(),
-            remaining = steps.drop(1),
-            entries = prefilled,
-            references = references,
-            weightUnit = unit,
-        )
-    return exercises to state
+    val base =
+        if (draft != null) {
+            restoreSession(exercises, prefilled, references, draft, unit)
+        } else {
+            SessionPlayerUiState(entries = prefilled, references = references, weightUnit = unit)
+        }
+    return exercises to base.copy(blocks = blocks, previous = previous)
 }
+
+private fun SessionStep.matches(
+    planExerciseId: String,
+    setIndex: Int,
+): Boolean = this.planExerciseId == planExerciseId && this.setIndex == setIndex
 
 private fun SessionPlayerUiState.editEntries(
     planExerciseId: String,

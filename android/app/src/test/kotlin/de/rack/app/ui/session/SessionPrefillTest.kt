@@ -3,17 +3,15 @@ package de.rack.app.ui.session
 import de.rack.app.domain.PlanExercise
 import de.rack.app.domain.SetLog
 import de.rack.app.domain.WeightUnit
-import de.rack.app.ui.theme.SupersetKind
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 /**
- * Covers the pure session-player display logic the screen renders (issue #58,
- * docs/specs/spec-session-player.md): [prefillEntries] seeds kg/RIR/reps from the
- * last log and the target, and [SessionPlayerUiState.rotationCueName] surfaces the
- * "Next: <exercise>" hand-off only inside a superset/circuit group. kg and RIR are
- * single per-exercise values; only reps are per-set.
+ * Covers the pure session-player display logic the set-table screen renders (issue #58 /
+ * #161, docs/specs/spec-session-player.md): [prefillEntries] seeds kg/RIR/reps from the
+ * last log and the target, and [previousSets] builds the per-set "Vorher" strings from the
+ * last logged session's matching set. kg and RIR are single per-exercise values; reps and
+ * the previous-performance column are per-set.
  */
 class SessionPrefillTest {
     @Test
@@ -51,36 +49,27 @@ class SessionPrefillTest {
     }
 
     @Test
-    fun `rotation cue names the next group member but not a same-exercise step`() {
-        val a0 = step("a", kind = SupersetKind.SUPERSET, setIndex = 0)
-        val b0 = step("b", kind = SupersetKind.SUPERSET, setIndex = 0)
-        val a1 = step("a", kind = SupersetKind.SUPERSET, setIndex = 1)
+    fun `previous shows the last session's matching set as weight times reps per set`() {
+        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        val last = log("a", weight = 82.5, reps = listOf(8, 7, 7), rir = 1)
 
-        // a -> b is a real hand-off; a -> a (same exercise, next round) is not.
-        assertEquals("b", SessionPlayerUiState(focused = a0, remaining = listOf(b0, a1)).rotationCueName)
-        assertNull(SessionPlayerUiState(focused = a0, remaining = listOf(a1)).rotationCueName)
+        val previous = previousSets(listOf(exercise), mapOf("a" to last), WeightUnit.KG).getValue("a")
+
+        assertEquals(listOf("82.5 × 8", "82.5 × 7", "82.5 × 7"), previous)
     }
 
     @Test
-    fun `rotation cue is absent for a standalone exercise`() {
-        val a0 = step("a", kind = SupersetKind.NONE, setIndex = 0)
-        val a1 = step("a", kind = SupersetKind.NONE, setIndex = 1)
+    fun `previous is blank per set with no last log or no matching rep`() {
+        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        // Last log has only two sets; the third has no matching previous rep.
+        val last = log("a", weight = 80.0, reps = listOf(10, 8), rir = 1)
 
-        assertNull(SessionPlayerUiState(focused = a0, remaining = listOf(a1)).rotationCueName)
+        val noLog = previousSets(listOf(exercise), emptyMap(), WeightUnit.KG).getValue("a")
+        val partial = previousSets(listOf(exercise), mapOf("a" to last), WeightUnit.KG).getValue("a")
+
+        assertEquals(listOf("", "", ""), noLog)
+        assertEquals(listOf("80 × 10", "80 × 8", ""), partial)
     }
-
-    private fun step(
-        id: String,
-        kind: SupersetKind,
-        setIndex: Int,
-    ) = SessionStep(
-        planExerciseId = id,
-        exerciseId = id,
-        name = id,
-        kind = kind,
-        setIndex = setIndex,
-        totalSets = 3,
-    )
 
     private fun exercise(
         id: String,

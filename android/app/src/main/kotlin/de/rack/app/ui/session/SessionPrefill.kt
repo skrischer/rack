@@ -63,3 +63,33 @@ fun referenceLine(
     val reps = log.reps.filter { it > 0 }.joinToString(separator = "/").ifEmpty { "–" }
     return "$weight ${unit.wire} · $reps"
 }
+
+/**
+ * The per-set "Vorher" (previous-performance) strings for every exercise, by set index:
+ * the last logged session's matching set rendered as "weight × reps" (e.g. "82,5 × 8") in
+ * the selected [unit]. A set with no matching logged rep yields an empty string (the table
+ * renders "—"). The `set_logs` row stores a scalar weight, so every set of an exercise
+ * shares that weight; only the reps differ per set. Covers exactly each exercise's target
+ * set count so the set table can index it directly.
+ */
+fun previousSets(
+    exercises: List<PlanExercise>,
+    lastLogs: Map<String, SetLog>,
+    unit: WeightUnit,
+): Map<String, List<String>> =
+    exercises.associate { exercise ->
+        exercise.id to previousFor(exercise, lastLogs[exercise.id], unit)
+    }
+
+private fun previousFor(
+    exercise: PlanExercise,
+    last: SetLog?,
+    unit: WeightUnit,
+): List<String> {
+    val sets = setCount(exercise.target)
+    val weight = last?.weight?.let { formatWeight(it, unit) }
+    return (0 until sets).map { index ->
+        val reps = last?.reps?.getOrNull(index)?.takeIf { it > 0 }
+        if (weight != null && reps != null) "$weight × $reps" else ""
+    }
+}

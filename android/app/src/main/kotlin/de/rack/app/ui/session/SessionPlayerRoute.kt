@@ -69,9 +69,10 @@ fun SessionPlayerRoute(
             actions =
                 SessionPlayerActions(
                     onWeightChange = viewModel::onWeightChange,
-                    onRirChange = viewModel::onRirChange,
                     onRepsChange = viewModel::onRepsChange,
-                    onTick = viewModel::tickFocused,
+                    onRirChange = viewModel::onRirChange,
+                    onToggleSet = viewModel::tickSet,
+                    onFinish = viewModel::finish,
                     onRetry = viewModel::load,
                     onConfirmSave = viewModel::confirmSave,
                     onAbandon = viewModel::abandon,

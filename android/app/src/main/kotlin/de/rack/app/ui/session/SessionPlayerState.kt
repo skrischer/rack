@@ -60,28 +60,31 @@ enum class SessionSaveState {
 }
 
 /**
- * The session player's observable state: the [focused] step (the exercise + set in
- * focus), the [remaining] steps still to tick after it (in player order), the
- * already-[done] steps, the per-exercise working [entries] keyed by
- * `plan_exercise_id`, and the per-exercise last-logged [references] (the "last time"
- * summary line) shown for the focused exercise. When [focused] is null every step has
- * been ticked and the session is finished: [summary] then holds the per-exercise
- * sets-done/volume aggregation and [saveState] the confirm-save phase. All
- * stepping/rotation/aggregation lives in the ViewModel; the screen renders this state
- * and emits events only.
+ * The session player's observable state for the set-table layout: the static
+ * per-exercise [blocks] (one card each, with the superset/circuit group header on the
+ * first member), the already-ticked [done] sets, the per-exercise working [entries] keyed
+ * by `plan_exercise_id`, the per-set "Vorher" [previous] strings, and the per-exercise
+ * last-logged [references]. Each set is ticked individually in its card; [finished] flips
+ * when the user ends the session, when [summary] holds the per-exercise sets-done/volume
+ * aggregation and [saveState] the confirm-save phase. All grouping/aggregation lives in
+ * the ViewModel; the screen renders this state and emits events only.
  */
 data class SessionPlayerUiState(
-    val focused: SessionStep? = null,
-    val remaining: List<SessionStep> = emptyList(),
+    val blocks: List<SessionExerciseBlock> = emptyList(),
     val done: List<SessionStep> = emptyList(),
     val entries: Map<String, ExerciseEntries> = emptyMap(),
+    val previous: Map<String, List<String>> = emptyMap(),
     val references: Map<String, String> = emptyMap(),
+    val finished: Boolean = false,
     val summary: SessionSummary? = null,
     val saveState: SessionSaveState = SessionSaveState.IDLE,
     val weightUnit: WeightUnit = WeightUnit.KG,
 ) {
-    /** True once the last step has been ticked and no step remains in focus. */
-    val isFinished: Boolean get() = focused == null
+    /** True once the user has ended the session, so the confirm-save summary is shown. */
+    val isFinished: Boolean get() = finished
+
+    /** The total number of tickable sets across every exercise in the session. */
+    val totalSets: Int get() = blocks.sumOf(SessionExerciseBlock::setCount)
 
     /** The working entries for [planExerciseId], or empty defaults if untouched. */
     fun entriesFor(planExerciseId: String): ExerciseEntries = entries[planExerciseId] ?: ExerciseEntries()
@@ -89,16 +92,21 @@ data class SessionPlayerUiState(
     /** The "last time" reference summary for [planExerciseId], or null if none logged. */
     fun referenceFor(planExerciseId: String): String? = references[planExerciseId]
 
-    /**
-     * The name of the exercise the player rotates to next within the focused step's
-     * superset/circuit group, shown as the "Next: <exercise>" cue. Null for a
-     * standalone exercise or when the next remaining step is the same exercise (the
-     * round has not rotated yet), so the cue appears only for an actual hand-off.
-     */
-    val rotationCueName: String?
-        get() {
-            val current = focused?.takeIf { it.kind != SupersetKind.NONE } ?: return null
-            val next = remaining.firstOrNull() ?: return null
-            return next.name.takeIf { next.planExerciseId != current.planExerciseId }
-        }
+    /** The per-set "Vorher" strings for [planExerciseId]; empty entries render as "—". */
+    fun previousFor(planExerciseId: String): List<String> = previous[planExerciseId].orEmpty()
+
+    /** Whether the [setIndex]-th set of [planExerciseId] has been ticked. */
+    fun isSetDone(
+        planExerciseId: String,
+        setIndex: Int,
+    ): Boolean = done.any { it.planExerciseId == planExerciseId && it.setIndex == setIndex }
 }
+
+/**
+ * The data the running set-table view renders, bundled so the body takes one parameter:
+ * the live [session] state and the elapsed [durationSeconds] from the Phase-8 timer.
+ */
+data class SessionRunningContent(
+    val session: SessionPlayerUiState,
+    val durationSeconds: Int,
+)

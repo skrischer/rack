@@ -70,6 +70,25 @@ class SessionSteppingTest {
         assertEquals(listOf("a#0", "b#0", "a#1", "b#1", "a#2", "b#2", "a#3"), steps.map(::label))
     }
 
+    @Test
+    fun `exercise blocks keep day order with set counts and a header on each group's first member`() {
+        val blocks =
+            buildExerciseBlocks(
+                listOf(
+                    exercise("a", target = "3 x 8", label = null),
+                    exercise("b", target = "2 x 12", label = "S1"),
+                    exercise("c", target = "2 x 12", label = "S1"),
+                ),
+            )
+
+        assertEquals(listOf("a", "b", "c"), blocks.map { it.planExerciseId })
+        assertEquals(listOf(3, 2, 2), blocks.map { it.setCount })
+        // Only the first superset member opens the group header; the standalone never does.
+        assertEquals(listOf(false, true, false), blocks.map { it.groupStart })
+        assertEquals(SupersetKind.NONE, blocks.first().kind)
+        assertEquals(SupersetKind.SUPERSET, blocks[1].kind)
+    }
+
     private fun label(step: SessionStep): String = "${step.exerciseId}#${step.setIndex}"
 
     private fun exercise(
