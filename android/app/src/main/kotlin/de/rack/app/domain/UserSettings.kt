@@ -42,17 +42,3 @@ data class UserSettings(
         const val DEFAULT_REST_CIRCUIT_SECONDS = 45
     }
 }
-
-/** The weight display/entry unit; storage stays canonical kg regardless of choice. */
-enum class WeightUnit(
-    val wire: String,
-) {
-    KG("kg"),
-    LB("lb"),
-    ;
-
-    companion object {
-        /** Parse the persisted `weight_unit` string, defaulting to [KG] for any unknown value. */
-        fun fromWire(value: String?): WeightUnit = entries.firstOrNull { it.wire == value } ?: KG
-    }
-}

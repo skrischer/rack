@@ -17,9 +17,17 @@ import kotlin.math.roundToLong
  */
 
 /** The user-selectable weight unit. Storage is always kg; `LB` is display/entry only. */
-enum class WeightUnit {
-    KG,
-    LB,
+enum class WeightUnit(
+    val wire: String,
+) {
+    KG("kg"),
+    LB("lb"),
+    ;
+
+    companion object {
+        /** Parse the persisted `weight_unit` string, defaulting to [KG] for any unknown value. */
+        fun fromWire(value: String?): WeightUnit = entries.firstOrNull { it.wire == value } ?: KG
+    }
 }
 
 /** 1 kilogram in pounds (docs/specs/spec-settings.md prior decisions). */
