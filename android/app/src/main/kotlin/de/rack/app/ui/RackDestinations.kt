@@ -32,6 +32,12 @@ object RackDestinations {
     /** Builds a concrete detail route for the given catalog exercise id. */
     fun exerciseDetailRoute(exerciseId: String): String = "exercise/$exerciseId"
 
+    /** Per-exercise progress route template; [exerciseProgressRoute] fills in a concrete id. */
+    const val EXERCISE_PROGRESS = "exercise/{$EXERCISE_ID_ARG}/progress"
+
+    /** Builds a concrete progress route for the given catalog exercise id. */
+    fun exerciseProgressRoute(exerciseId: String): String = "exercise/$exerciseId/progress"
+
     /** Navigation argument carrying the plan day id into the guided session player. */
     const val SESSION_DAY_ID_ARG = "dayId"
 

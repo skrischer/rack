@@ -9,6 +9,7 @@ import de.rack.app.ui.artifacts.ArtifactViewModel
 import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
+import de.rack.app.ui.exercise.ExerciseProgressViewModel
 import de.rack.app.ui.home.HomeViewModel
 import de.rack.app.ui.keys.ApiKeyViewModel
 import de.rack.app.ui.logging.LoggingViewModel
@@ -110,6 +111,24 @@ fun exerciseDetailViewModelFactory(
                 repository = container.exerciseRepository,
                 exerciseId = exerciseId,
                 decodeImage = decodeImage,
+            )
+        }
+    }
+
+/**
+ * Factory for the per-exercise progress ViewModel, which needs a runtime [exerciseId]
+ * to aggregate that exercise's logged history. Separate from [appViewModelFactory]
+ * because its input is route-scoped, not container-scoped.
+ */
+fun exerciseProgressViewModelFactory(
+    container: AppContainer,
+    exerciseId: String,
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            ExerciseProgressViewModel(
+                repository = container.dashboardRepository,
+                exerciseId = exerciseId,
             )
         }
     }
