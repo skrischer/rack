@@ -3,9 +3,11 @@ package de.rack.app.ui.keys
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,23 +15,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import de.rack.app.ui.theme.RecompGhostButton
+import de.rack.app.ui.theme.RecompPrimaryButton
 import de.rack.app.ui.theme.RecompTheme
 
+/** Scrim opacity over the key list while the reveal modal is open (kit `.overlay`). */
+private const val SCRIM_ALPHA = 0.72f
+
 /**
- * The onboarding flow shown over the key list right after a key is minted: it
- * walks a first-time user from a freshly created key to a working MCP-client
- * connection. It presents the freshly-minted [plaintext], the hosted
- * [endpointUrl], and a ready-to-paste Streamable-HTTP config [snippet] — each
- * with its own copy-to-clipboard action — plus the one-time "you will not see
- * this again" warning for the secret.
+ * The one-time key-reveal modal (kit `key-reveal.html`): a scrim over the key list
+ * with a centered card that shows the freshly-minted [plaintext] exactly once,
+ * alongside the hosted [endpointUrl] and a ready-to-paste MCP-client config built
+ * from the same endpoint constant the admin calls use.
  *
- * The snippet is built from the same endpoint constant the app's admin calls use,
- * so pasting it into a real client connects. [onDismiss] clears the plaintext
- * irrecoverably — the server cannot return it again — so leaving discards it. No
- * business logic lives here.
+ * The primary action copies the secret; the endpoint and config each copy
+ * independently. [onDismiss] discards the plaintext irrecoverably — the server
+ * cannot return it again — so leaving via "Fertig" is the only exit, and tapping
+ * the scrim is intentionally inert to avoid losing the key by accident. No business
+ * logic lives here.
  */
 @Composable
 fun ApiKeyReveal(
@@ -41,107 +49,102 @@ fun ApiKeyReveal(
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
+    val clipboard = LocalClipboardManager.current
     val snippet = mcpClientConfigSnippet(endpointUrl, plaintext)
 
-    Box(modifier = modifier.fillMaxSize().background(colors.bg)) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxSize()
+                .background(colors.bg.copy(alpha = SCRIM_ALPHA))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {}
+                .padding(spacing.xxl),
+        contentAlignment = Alignment.Center,
+    ) {
         Column(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .background(colors.panel, RecompTheme.shapes.xl)
+                    .border(spacing.border, colors.line, RecompTheme.shapes.xl)
                     .verticalScroll(rememberScrollState())
-                    .padding(spacing.gutter),
+                    .padding(spacing.xxl),
             verticalArrangement = Arrangement.spacedBy(spacing.lg),
         ) {
-            Text(text = "CONNECT YOUR MCP CLIENT", style = type.kicker, color = colors.volt)
+            Text(text = "KEY ERSTELLT", style = type.noteHeading, color = colors.volt)
             Text(
                 text =
-                    "Your key is ready. Add the endpoint and key to your MCP client, " +
-                        "or paste the config snippet below to connect.",
+                    "Dieser Schlüssel wird nur jetzt angezeigt. Kopiere ihn und bewahre ihn " +
+                        "sicher auf — er kann später nicht erneut abgerufen werden.",
                 style = type.body,
                 color = colors.dim,
             )
-            WarningBand()
-            CopyableField(
-                label = "YOUR KEY",
-                value = plaintext,
-                copyLabel = "COPY KEY",
-            )
-            CopyableField(
-                label = "ENDPOINT URL",
+            RevealField(label = "SCHLÜSSEL", value = plaintext)
+            RevealField(
+                label = "MCP-ENDPUNKT",
                 value = endpointUrl,
-                copyLabel = "COPY URL",
+                onCopy = { clipboard.setText(AnnotatedString(endpointUrl)) },
             )
-            CopyableField(
-                label = "MCP CLIENT CONFIG",
+            RevealField(
+                label = "MCP-CLIENT-CONFIG",
                 value = snippet,
-                copyLabel = "COPY CONFIG",
+                onCopy = { clipboard.setText(AnnotatedString(snippet)) },
             )
-            Text(
-                text = "DONE",
-                style = type.label,
-                color = colors.dim,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .border(spacing.border, colors.line, RecompTheme.shapes.md)
-                        .clickable(onClick = onDismiss)
-                        .padding(vertical = spacing.md),
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                RecompPrimaryButton(
+                    text = "Kopieren",
+                    onClick = { clipboard.setText(AnnotatedString(plaintext)) },
+                    modifier = Modifier.weight(1f),
+                )
+                RecompGhostButton(text = "Fertig", onClick = onDismiss)
+            }
         }
     }
 }
 
 /**
- * A labelled mono value box with its own copy-to-clipboard action; the single
- * onboarding building block, reused for the key, the endpoint URL, and the
- * config snippet so each field copies independently.
+ * A labelled mono code box (kit `.code`): the [label] cap with an optional inline
+ * "Kopieren" affordance, over the [value] in a bordered box. The secret field omits
+ * its own copy — the modal's primary action copies it.
  */
 @Composable
-private fun CopyableField(
+private fun RevealField(
     label: String,
     value: String,
-    copyLabel: String,
+    onCopy: (() -> Unit)? = null,
 ) {
     val colors = RecompTheme.colors
     val type = RecompTheme.typography
     val spacing = RecompTheme.spacing
-    val clipboard = LocalClipboardManager.current
-
     Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        Text(text = label, style = type.label, color = colors.dim)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = label, style = type.label, color = colors.dim)
+            if (onCopy != null) {
+                Text(
+                    text = "KOPIEREN",
+                    style = type.label,
+                    color = colors.voltDim,
+                    modifier = Modifier.clickable(onClick = onCopy),
+                )
+            }
+        }
         Text(
             text = value,
             style = type.loadValue,
-            color = colors.volt,
+            color = colors.txt,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .background(colors.panel, RecompTheme.shapes.sm)
+                    .background(colors.bg, RecompTheme.shapes.sm)
                     .border(spacing.border, colors.line, RecompTheme.shapes.sm)
                     .padding(spacing.lg),
         )
-        PrimaryButton(
-            label = copyLabel,
-            enabled = true,
-            onClick = { clipboard.setText(AnnotatedString(value)) },
-        )
     }
-}
-
-@Composable
-private fun WarningBand() {
-    val colors = RecompTheme.colors
-    val type = RecompTheme.typography
-    val spacing = RecompTheme.spacing
-    Text(
-        text = "Copy this key now. You will not be able to see it again.",
-        style = type.body,
-        color = colors.warningText,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(colors.warningBg, RecompTheme.shapes.sm)
-                .border(spacing.border, colors.legs, RecompTheme.shapes.sm)
-                .padding(spacing.lg),
-    )
 }
