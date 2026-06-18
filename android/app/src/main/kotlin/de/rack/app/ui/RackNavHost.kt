@@ -33,10 +33,11 @@ import de.rack.app.ui.artifacts.ArtifactViewerViewModel
 import de.rack.app.ui.auth.AuthRoute
 import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
+import de.rack.app.ui.calendar.calendarDestination
 import de.rack.app.ui.exercise.ExerciseDetailScreen
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
 import de.rack.app.ui.exercise.ExerciseProgressRoute
-import de.rack.app.ui.home.HomeRoute
+import de.rack.app.ui.home.homeDestination
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
@@ -96,9 +97,8 @@ private fun SignedInNavHost(
         composable(RackDestinations.PLAN) {
             PlanRoute(navController = navController, onSignOut = onSignOut)
         }
-        composable(RackDestinations.HOME) {
-            HomeRoute(container = LocalAppContainer.current, onBack = { navController.popBackStack() })
-        }
+        homeDestination(navController)
+        calendarDestination(navController)
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
         }
