@@ -35,6 +35,7 @@ import de.rack.app.ui.auth.AuthViewModel
 import de.rack.app.ui.auth.LoginScreen
 import de.rack.app.ui.exercise.ExerciseDetailScreen
 import de.rack.app.ui.exercise.ExerciseDetailViewModel
+import de.rack.app.ui.home.HomeRoute
 import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
@@ -93,6 +94,12 @@ private fun SignedInNavHost(
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
         composable(RackDestinations.PLAN) {
             PlanRoute(navController = navController, onSignOut = onSignOut)
+        }
+        composable(RackDestinations.HOME) {
+            HomeRoute(
+                container = LocalAppContainer.current,
+                onBack = { navController.popBackStack() },
+            )
         }
         composable(RackDestinations.KEYS) {
             KeysRoute(onBack = { navController.popBackStack() })
@@ -169,6 +176,7 @@ private fun PlanRoute(
                     onSelectPlan = planViewModel::selectPlan,
                     onRetry = planViewModel::load,
                     onSignOut = onSignOut,
+                    onOpenHome = { navController.navigate(RackDestinations.HOME) },
                     onOpenKeys = { navController.navigate(RackDestinations.KEYS) },
                     onOpenArtifacts = { navController.navigate(RackDestinations.ARTIFACTS) },
                     onOpenExercise = { id -> navController.navigate(RackDestinations.exerciseDetailRoute(id)) },
