@@ -55,6 +55,20 @@ object RackDestinations {
     /** Builds a concrete progress route for the given catalog exercise id. */
     fun exerciseProgressRoute(exerciseId: String): String = "exercise/$exerciseId/progress"
 
+    /** Optional navigation argument pre-filling the plate calculator's target weight (kg). */
+    const val PLATE_CALC_WEIGHT_ARG = "weight"
+
+    /**
+     * Plate-calculator route template (Phase 13). The [PLATE_CALC_WEIGHT_ARG] query argument
+     * is optional: absent it opens with an empty target; present it pre-fills the target from
+     * the logging surface's current working weight (kg).
+     */
+    const val PLATE_CALC = "plate-calc?$PLATE_CALC_WEIGHT_ARG={$PLATE_CALC_WEIGHT_ARG}"
+
+    /** Builds a concrete plate-calculator route, optionally pre-filling [weight] (kg). */
+    fun plateCalcRoute(weight: String? = null): String =
+        if (weight.isNullOrBlank()) "plate-calc" else "plate-calc?$PLATE_CALC_WEIGHT_ARG=$weight"
+
     /** Navigation argument carrying the plan day id into the guided session player. */
     const val SESSION_DAY_ID_ARG = "dayId"
 

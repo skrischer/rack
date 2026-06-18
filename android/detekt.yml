@@ -1,3 +1,12 @@
+complexity:
+  TooManyFunctions:
+    # Compose UI files legitimately group many small @Composable functions in one
+    # cohesive file (a screen plus its row/section sub-composables). The
+    # constitution caps function length (<=50 lines) and file length (<=400
+    # lines), not function count per file, so the default 11 is too strict here.
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+
 naming:
   FunctionNaming:
     ignoreAnnotated:
