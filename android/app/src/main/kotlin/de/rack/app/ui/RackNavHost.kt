@@ -3,7 +3,6 @@ package de.rack.app.ui
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -44,23 +43,13 @@ import de.rack.app.ui.keys.ApiKeyActions
 import de.rack.app.ui.keys.ApiKeyScreen
 import de.rack.app.ui.keys.ApiKeyState
 import de.rack.app.ui.keys.ApiKeyViewModel
-import de.rack.app.ui.logging.LoggingHandlers
-import de.rack.app.ui.logging.LoggingSection
-import de.rack.app.ui.logging.LoggingViewModel
 import de.rack.app.ui.plan.PlanScreen
-import de.rack.app.ui.plan.PlanUiState
 import de.rack.app.ui.plan.PlanViewModel
-import de.rack.app.ui.plan.findLoggedExerciseContext
 import de.rack.app.ui.plan.planActions
 import de.rack.app.ui.plate.plateCalcDestination
 import de.rack.app.ui.session.SessionPlayerRoute
 import de.rack.app.ui.settings.settingsDestination
 import de.rack.app.ui.theme.RecompTheme
-import de.rack.app.ui.timer.RestCompletionVibration
-import de.rack.app.ui.timer.TimerBar
-import de.rack.app.ui.timer.TimerBarActions
-import de.rack.app.ui.timer.TimerViewModel
-import de.rack.app.ui.timer.rememberNotificationPermission
 
 /**
  * Single-Activity Compose root. The [container] is exposed through
@@ -103,7 +92,7 @@ private fun SignedInNavHost(
         onNavigate = { route -> navController.navigateTopLevel(route) },
         onSignOut = onSignOut,
     ) {
-        SignedInNavGraph(navController = navController, onSignOut = onSignOut)
+        SignedInNavGraph(navController = navController)
     }
 }
 
@@ -121,12 +110,9 @@ private fun NavHostController.navigateTopLevel(route: String) {
 }
 
 @Composable
-private fun SignedInNavGraph(
-    navController: NavHostController,
-    onSignOut: () -> Unit,
-) {
+private fun SignedInNavGraph(navController: NavHostController) {
     NavHost(navController = navController, startDestination = RackDestinations.PLAN) {
-        composable(RackDestinations.PLAN) { PlanRoute(navController = navController, onSignOut = onSignOut) }
+        composable(RackDestinations.PLAN) { PlanRoute(navController = navController) }
         homeDestination(navController)
         calendarDestination(navController)
         settingsDestination(navController)
@@ -184,73 +170,14 @@ private fun SignedInNavGraph(
 }
 
 @Composable
-private fun PlanRoute(
-    navController: NavHostController,
-    onSignOut: () -> Unit,
-) {
-    val factory = appViewModelFactory(LocalAppContainer.current)
-    val planViewModel: PlanViewModel = viewModel(factory = factory)
-    val loggingViewModel: LoggingViewModel = viewModel(factory = factory)
-    val timerViewModel: TimerViewModel = viewModel(factory = factory)
+private fun PlanRoute(navController: NavHostController) {
+    val planViewModel: PlanViewModel = viewModel(factory = appViewModelFactory(LocalAppContainer.current))
     val planState by planViewModel.uiState.collectAsStateWithLifecycle()
-    val loggingState by loggingViewModel.uiState.collectAsStateWithLifecycle()
-    val timerState by timerViewModel.uiState.collectAsStateWithLifecycle()
-    val permission = rememberNotificationPermission()
-    RestCompletionVibration(restFinished = timerViewModel.restFinished)
-    Column(modifier = Modifier.fillMaxSize()) {
-        PlanScreen(
-            state = planState,
-            logging =
-                LoggingSection(
-                    state = loggingState,
-                    handlers =
-                        LoggingHandlers(
-                            prepare = loggingViewModel::prepare,
-                            onWeightChange = loggingViewModel::onWeightChange,
-                            onRepChange = loggingViewModel::onRepChange,
-                            onToggleHistory = loggingViewModel::toggleHistory,
-                            onLog = { id ->
-                                loggingViewModel.log(id)
-                                permission.request()
-                                startRestFor(timerViewModel, planState, id)
-                            },
-                            onOpenPlateCalc = { weight ->
-                                navController.navigate(RackDestinations.plateCalcRoute(weight))
-                            },
-                        ),
-                ),
-            actions = planActions(navController, planViewModel, onSignOut),
-            modifier = Modifier.weight(1f),
-        )
-        TimerBar(
-            state = timerState,
-            notificationsDenied = !permission.isGranted,
-            actions =
-                TimerBarActions(
-                    onAdd = timerViewModel::addRest,
-                    onSubtract = timerViewModel::subtractRest,
-                    onSkip = timerViewModel::skipRest,
-                    onRestart = timerViewModel::restartRest,
-                    onEndSession = timerViewModel::stopSession,
-                ),
-        )
-    }
-}
-
-/**
- * Resolve the logged exercise's group context from the on-screen plan and auto-start
- * its rest + rotation cue (docs/specs/spec-timers.md). A pure lookup feeds the
- * resolution that lives in the [TimerViewModel]; nothing here is business logic.
- */
-private fun startRestFor(
-    timerViewModel: TimerViewModel,
-    planState: PlanUiState,
-    planExerciseId: String,
-) {
-    val content = (planState as? PlanUiState.Content)?.content ?: return
-    val context = findLoggedExerciseContext(content.days, planExerciseId) ?: return
-    val category = context.group.getOrNull(context.index)?.category
-    timerViewModel.onSetLogged(category = category, context = context)
+    PlanScreen(
+        state = planState,
+        actions = planActions(navController, planViewModel),
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 @Composable
