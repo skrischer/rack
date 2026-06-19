@@ -63,8 +63,13 @@ export function registerSetLogTools(server: McpServer, auth: AuthContext): void 
     {
       title: 'List set logs',
       description:
-        "List the caller's logged sets, optionally filtered by plan exercise and date range.",
+        "List the caller's logged sets (workout history), newest first. " +
+        'Params: planExerciseId (optional UUID), from/to (optional inclusive ISO dates ' +
+        'YYYY-MM-DD), limit (optional, 1-500, default 100). ' +
+        'Returns: an array of set-log rows (id, plan_exercise_id, date, weight, reps, rir, ' +
+        'logged_at, source, updated_at).',
       inputSchema,
+      annotations: { readOnlyHint: true },
     },
     async (input) => jsonResult(await querySetLogs(auth, input)),
   );

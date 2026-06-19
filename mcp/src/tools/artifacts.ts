@@ -135,7 +135,11 @@ export function registerArtifactTools(server: McpServer, auth: AuthContext): voi
     {
       title: 'create_artifact',
       description:
-        'Upload a renderable visualization artifact (HTML, SVG, or PNG) and record it for the caller.',
+        'Upload a renderable visualization artifact and record it for the caller ' +
+        "(written with source='agent'). " +
+        'Params: name (required, non-empty), type (required, one of text/html, image/svg+xml, ' +
+        'image/png), content (required UTF-8 string, max 2 MB). ' +
+        'Returns: the created artifact row (id, name, type, storage_path).',
       inputSchema: createArtifactSchema,
     },
     async (input) => createArtifact(auth, input),
@@ -144,8 +148,13 @@ export function registerArtifactTools(server: McpServer, auth: AuthContext): voi
     'list_artifacts',
     {
       title: 'list_artifacts',
-      description: "List the caller's visualization artifacts, newest first.",
+      description:
+        "List the caller's visualization artifacts, newest first. " +
+        'Params: none. ' +
+        'Returns: an array of artifact rows (id, name, type, storage_path, source, ' +
+        'created_at, updated_at).',
       inputSchema: z.object({}).strict(),
+      annotations: { readOnlyHint: true },
     },
     async () => listArtifacts(auth),
   );

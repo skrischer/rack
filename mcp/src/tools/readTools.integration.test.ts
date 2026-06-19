@@ -103,6 +103,7 @@ describe('read tools', () => {
     const names = (await client.listTools()).tools.map((tool) => tool.name);
     expect(names).toEqual(
       expect.arrayContaining([
+        'ping',
         'list_plans',
         'get_plan',
         'list_set_logs',
@@ -110,6 +111,36 @@ describe('read tools', () => {
       ]),
     );
     expect(names).not.toContain('create_plan');
+  });
+
+  it('advertises readOnlyHint on read tools and not on write tools', async () => {
+    const client = await clientFor(keyA);
+    const byName = new Map((await client.listTools()).tools.map((tool) => [tool.name, tool]));
+
+    const readTools = [
+      'ping',
+      'list_plans',
+      'get_plan',
+      'search_exercises',
+      'list_set_logs',
+      'list_artifacts',
+    ];
+    for (const name of readTools) {
+      expect(byName.get(name)?.annotations?.readOnlyHint, name).toBe(true);
+    }
+
+    const writeTools = ['create_plans', 'update_plans', 'delete_plans', 'create_artifact'];
+    for (const name of writeTools) {
+      expect(byName.get(name)?.annotations?.readOnlyHint, name).toBeUndefined();
+    }
+  });
+
+  it('gives every tool a non-empty description', async () => {
+    const client = await clientFor(keyA);
+    const tools = (await client.listTools()).tools;
+    for (const tool of tools) {
+      expect((tool.description ?? '').length, tool.name).toBeGreaterThan(0);
+    }
   });
 
   it('list_plans returns only the caller\'s plans', async () => {
