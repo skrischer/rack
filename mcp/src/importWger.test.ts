@@ -193,7 +193,9 @@ describe('buildSql', () => {
 
   it('marks the four canonical movements is_canonical = true', () => {
     for (const name of ['Lateral Raise', 'Lat Pulldown', 'Triceps Pushdown', 'Shoulder Press']) {
-      expect(sql).toMatch(new RegExp(`\\('${name}',[\\s\\S]*?, true\\)`));
+      // Anchored to the tuple's own line (multiline) so a prefix-named row cannot
+      // accidentally satisfy the match via another row's `, true)`.
+      expect(sql).toMatch(new RegExp(`^  \\('${name}',[^\\n]*?, true\\)`, 'm'));
     }
   });
 
