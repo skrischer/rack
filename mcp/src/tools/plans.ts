@@ -19,8 +19,8 @@ const DAY_COLUMNS = 'id, plan_id, position, title, focus, tag, source, updated_a
 
 /** Columns returned for a plan exercise, joined to its catalog name. */
 const EXERCISE_COLUMNS =
-  'id, day_id, exercise_id, position, target, rir, cue, superset_label, source, ' +
-  'exercise:exercises(name, category)';
+  'id, day_id, exercise_id, position, sets, rep_min, rep_max, rir_low, rir_high, ' +
+  'rest_seconds, cue, superset_id, group_type, source, exercise:exercises(name, category)';
 
 /** Registers `list_plans`: returns every plan owned by the resolved user. */
 function registerListPlans(server: McpServer, auth: AuthContext): void {
