@@ -29,15 +29,22 @@ the default branch with a milestone and issues.
 
 - A migration adding `user_id uuid null references auth.users (id) on delete
   cascade` to `public.exercises` (null = shared catalog, non-null = a user's
-  custom), with the RLS reworked: SELECT where `user_id IS NULL OR user_id =
-  auth.uid()`; INSERT / UPDATE / DELETE `with check (user_id = auth.uid())`;
-  grants extended to INSERT/UPDATE/DELETE for `authenticated`. A partial index on
-  `user_id` for own-row lookup.
+  custom), with distinct RLS policies (not one `FOR ALL`): replace the SELECT
+  policy with `FOR SELECT using (user_id IS NULL OR user_id = auth.uid())`; add
+  `FOR INSERT with check (user_id = auth.uid())`; `FOR UPDATE using (user_id =
+  auth.uid()) with check (user_id = auth.uid())`; `FOR DELETE using (user_id =
+  auth.uid())`. Grants extended to INSERT/UPDATE/DELETE for `authenticated`. A
+  partial index `on exercises (user_id) where user_id is not null` for own-row
+  lookup.
 - A `create_exercise` MCP write tool: user-scoped, injects `user_id =
-  auth.uid()`, Zod-validated; the catalog row it produces is searchable.
-- `search_exercises` (Phase 14) returns own customs via RLS (no query change
-  needed) and its projection gains a custom indicator (`user_id` or a computed
-  `is_custom`).
+  auth.uid()`, Zod-validated; the catalog row it produces is searchable. The
+  camelCase input maps to the real columns (`name`, `category`, `equipment`,
+  `muscles`/`primary_muscles` per the Phase 7 enrich schema, `aliases` per
+  Phase 14) — the implementer confirms the column set against the migrations.
+- `search_exercises` (Phase 14) returns own customs via RLS without a query
+  change, but its projection (`EXERCISE_COLUMNS`, `mcp/src/tools/exercises.ts`,
+  the constant Phase 14 already extends) **must** add `user_id` or a computed
+  `is_custom` so customs are marked.
 - Tests: MCP integration for create + reference-in-plan; a cross-user isolation
   test (a custom exercise is invisible and unwritable to another user).
 
@@ -85,7 +92,7 @@ the default branch with a milestone and issues.
 | Decision | Rationale | Date |
 |---|---|---|
 | A custom exercise is an `exercises` row with `user_id` set, referenced by `plan_exercises.exercise_id` like any catalog row; no `plan_exercises` change | Architecture doc already states this; reuses the existing FK (`on delete restrict`); prior-art Hevy `is_custom`; minimal | 2026-06-19 |
-| RLS: SELECT `user_id IS NULL OR user_id = auth.uid()`; write `with check (user_id = auth.uid())`; `anon` keeps catalog-only read | Catalog stays public read-only, customs are owner-scoped, no cross-user leak (constitution per-table RLS) | 2026-06-19 |
+| RLS as distinct per-action policies (not `FOR ALL`): SELECT `user_id IS NULL OR user_id = auth.uid()`; INSERT/UPDATE/DELETE scoped to `user_id = auth.uid()` (UPDATE carries both `using` and `with check`); `anon` keeps catalog-only read | A `FOR ALL` policy would narrow SELECT too and hide the catalog from authenticated users; catalog stays public read-only, customs owner-scoped, no cross-user leak (constitution per-table RLS) | 2026-06-19 |
 | `create_exercise` input: `name` required; `category`, `equipment`, `primaryMuscles`, `aliases` optional; `is_canonical` stays false; `user_id` injected from auth | A custom exercise needs to be nameable and searchable; canonical is a curated catalog property, not a user one | 2026-06-19 |
 | Custom-ness is derived from `user_id` (no separate `is_custom` column); `search_exercises` surfaces it in the projection | No redundant column; the user-scoped search already returns own customs via RLS | 2026-06-19 |
 | Depends on Phase 14 (#15) only — the `exercises` search + projection — not Phase 15 | A plan references a custom exercise irrespective of prescription structure; this corrects the roadmap intent's over-stated Phase 15 edge | 2026-06-19 |
@@ -125,3 +132,7 @@ Each issue references this spec path in its body.
 - 2026-06-19: Spec drafted from the beta §4.2 mandatory-catalog gap and the
   Phase 15 acceptance-gate decision to split custom exercises into their own
   phase.
+- 2026-06-19: Review (APPROVE) non-blocking findings folded in — distinct
+  per-action RLS policies (UPDATE `using`+`with check`, SELECT untouched/compound),
+  the partial index predicate (`where user_id is not null`), the explicit
+  `EXERCISE_COLUMNS` projection change, and the camelCase→column mapping.
