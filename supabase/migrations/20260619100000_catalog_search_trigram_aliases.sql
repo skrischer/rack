@@ -35,9 +35,11 @@ alter table public.exercises
   add column if not exists is_canonical boolean not null default false;
 
 -- Searchable text = name plus every alias, as one string. The rebuilt search
--- matches each `q` token against THIS expression via the pg_trgm `%` operator
--- and ranks by `similarity()`, so a single GIN trigram index covers both `name`
--- and the `aliases` array under one ranking system (no second index/ranking).
+-- matches each `q` token against THIS expression via pg_trgm word-similarity
+-- (the `<%` operator / `word_similarity()`, which finds the token inside the
+-- longer text) and ranks by that score, so a single GIN trigram index covers
+-- both `name` and the `aliases` array under one ranking system (no second
+-- index/ranking).
 --
 -- A wrapper is required: a GIN trigram expression index demands an IMMUTABLE
 -- expression, but `array_to_string` is only STABLE and `aliases::text` is not
@@ -53,9 +55,9 @@ create or replace function public.exercises_search_text(name text, aliases text[
     select name || ' ' || coalesce(array_to_string(aliases, ' '), '')
   $$;
 
--- GIN trigram index over name + aliases, backing `%` filtering and similarity
--- ranking in `search_exercises`. The matching query must reference the same
--- `exercises_search_text(name, aliases)` expression to use this index.
+-- GIN trigram index over name + aliases, backing the `<%` / `%` operators and
+-- similarity ranking in `search_exercises`. The matching query must reference
+-- the same `exercises_search_text(name, aliases)` expression to use this index.
 create index if not exists exercises_search_trgm
   on public.exercises
   using gin (public.exercises_search_text(name, aliases) gin_trgm_ops);
