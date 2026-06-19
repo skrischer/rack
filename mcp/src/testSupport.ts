@@ -188,7 +188,9 @@ export async function seedPlanTree(
     day_id: dayId,
     exercise_id: exerciseId,
     position: 0,
-    target: '3x8',
+    sets: 3,
+    rep_min: 8,
+    rep_max: 8,
     source: 'app',
   });
   const setLogId = await insertRow(userClient, 'set_logs', {
