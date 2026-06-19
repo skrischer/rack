@@ -57,8 +57,8 @@ merged on the default branch with a milestone and issues.
 
 - Custom / user-authored exercises (`is_custom` / non-null `user_id`) — Phase 15.
 - Structured prescription, RIR ranges, supersets/circuits — Phase 15.
-- Nested transactional authoring and the cross-tool annotation/discovery pass —
-  Phase 16.
+- Nested transactional authoring, the cross-tool annotation/discovery pass, and
+  the `resolve_exercise` helper — Phase 16.
 - Android exercise-picker UI redesign — the app consumes the same catalog rows;
   no client UI work beyond rendering the existing fields.
 
@@ -113,9 +113,9 @@ merged on the default branch with a milestone and issues.
 | The `search_exercises` SELECT projection gains `aliases` and `is_canonical` (current `EXERCISE_COLUMNS`, `mcp/src/tools/exercises.ts:15`) | The rebuilt tool must return the new fields, not silently drop them | 2026-06-19 |
 | Catalog stays public-read; the migration is additive and re-asserts the public SELECT policy | Constitution (catalog is the one public table) + enrich-migration precedent | 2026-06-19 |
 | Custom / user exercises are deferred to Phase 15 | Roadmap boundary — custom exercises are an authoring concern, not catalog search | 2026-06-19 |
-| OPEN — curation depth: full re-curation of all ~848 rows vs. a targeted canonical layer (alias + flag the common movements, leave the long tail). Either way the four beta-named movements (Lateral Raise, Lat Pulldown, Triceps Pushdown, Shoulder Press) are guaranteed canonical, so the Verification tests are stable | resolved at the spec-acceptance gate | — |
-| OPEN — equipment-normalization depth: derive Cable/Machine from names (best-effort) vs. a curated remap vs. only exposing a filter over existing values | resolved at the spec-acceptance gate | — |
-| OPEN — ship `resolve_exercise(q, equipment?, muscle?) → single best-ranked catalog row or null` (same ranking as `search_exercises`) in this phase, or defer it to Phase 16 (authoring ergonomics) | resolved at the spec-acceptance gate | — |
+| Targeted canonical layer: the common movements get a canonical entry + aliases (aliases seeded automatically from wger translations); the long tail stays searchable but uncurated. The four beta-named movements (Lateral Raise, Lat Pulldown, Triceps Pushdown, Shoulder Press) are guaranteed canonical, so the Verification tests are stable | Spec-acceptance gate — pragmatic, covers the beta cases without a full manual sweep | 2026-06-19 |
+| Equipment normalization is best-effort: derive Cable/Machine from the exercise name, keep the raw equipment value, expose the filter regardless | Spec-acceptance gate — makes Cable/Machine reachable (beta §4.1) without a full curated remap | 2026-06-19 |
+| `resolve_exercise` is deferred to Phase 16 (authoring ergonomics); Phase 14's canonical-first ranking already returns the best match as the top result | Spec-acceptance gate — keeps Phase 14 to catalog + search; the helper fits the nested-authoring phase | 2026-06-19 |
 
 ## Tracking
 
@@ -155,3 +155,10 @@ Each issue references this spec path in its body.
 ## Decision log
 
 - 2026-06-19: Spec drafted from the beta-test findings and the prior-art harvest.
+- 2026-06-19: Review (REQUEST_CHANGES) addressed — committed the trigram
+  token-AND search formula (no FTS), the `muscle`-filter `coalesce` semantics,
+  the `is_canonical` column, optional-`q` filter browse, and the
+  `resolve_exercise` contract.
+- 2026-06-19: Spec-acceptance gate resolved the three open decisions — targeted
+  canonical layer, best-effort equipment derivation, `resolve_exercise` deferred
+  to Phase 16. Human prerequisites: none. Spec accepted.
