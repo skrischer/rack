@@ -102,7 +102,11 @@ as $$
       )
     )
   order by score desc, e.is_canonical desc, tiebreak desc, e.name asc
-  limit greatest(coalesce(result_limit, 25), 1)
+  -- Clamp 1..100 (default 25). The MCP tool's Zod schema also caps at 100, but
+  -- the RPC is grantable to anon/authenticated and reachable directly via
+  -- PostgREST, so the cap is re-enforced here so no caller can request an
+  -- unbounded scan.
+  limit greatest(least(coalesce(result_limit, 25), 100), 1)
 $$;
 
 -- Catalog search is public-read; expose the RPC to the same roles as the table.

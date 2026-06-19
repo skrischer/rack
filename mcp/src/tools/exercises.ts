@@ -60,7 +60,8 @@ type ExerciseQuery = {
  * canonical-first, then a name-similarity tiebreak) and top-N limiting in one
  * SQL statement. The `.select()` here only projects the catalog columns (dropping
  * the RPC's internal `score`/`tiebreak`); PostgREST preserves the function's
- * own row order, so the rows arrive best-match first.
+ * own row order (a column-only projection does not re-order), so the rows arrive
+ * best-match first — an invariant the search integration test guards.
  */
 async function searchCatalog(auth: AuthContext, input: ExerciseQuery): Promise<unknown> {
   const { data, error } = await auth.supabase
