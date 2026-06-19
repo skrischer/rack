@@ -103,6 +103,7 @@ describe('read tools', () => {
     const names = (await client.listTools()).tools.map((tool) => tool.name);
     expect(names).toEqual(
       expect.arrayContaining([
+        'ping',
         'list_plans',
         'get_plan',
         'list_set_logs',
