@@ -24,7 +24,7 @@
 | 11 | Overviews & dashboards | [spec](specs/spec-dashboards.md) | [#11](https://github.com/skrischer/rack/milestone/11) |
 | 12 | Settings & units | [spec](specs/spec-settings.md) | [#12](https://github.com/skrischer/rack/milestone/12) |
 | 13 | Plate calculator & 1RM estimates | [spec](specs/spec-plate-calc-1rm.md) | [#13](https://github.com/skrischer/rack/milestone/13) |
-| 14 | Exercise catalog quality & search | — | — |
+| 14 | Exercise catalog quality & search | [spec](specs/spec-catalog-search.md) | [#15](https://github.com/skrischer/rack/milestone/15) |
 | 15 | Structured plan prescription & grouping | — | — |
 | 16 | MCP authoring ergonomics & stability | — | — |
 
