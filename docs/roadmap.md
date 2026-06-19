@@ -27,7 +27,7 @@
 | 14 | Exercise catalog quality & search | [spec](specs/spec-catalog-search.md) | [#15](https://github.com/skrischer/rack/milestone/15) |
 | 15 | Structured plan prescription & grouping | [spec](specs/spec-structured-prescription.md) | [#16](https://github.com/skrischer/rack/milestone/16) |
 | 16 | MCP authoring ergonomics & stability | [spec](specs/spec-mcp-authoring.md) | [#17](https://github.com/skrischer/rack/milestone/17) |
-| 17 | Custom / user-authored exercises | — | — |
+| 17 | Custom / user-authored exercises | [spec](specs/spec-custom-exercises.md) | [#18](https://github.com/skrischer/rack/milestone/18) |
 
 A phase gets a Spec link once `/plan` drafts it, and a Milestone link once the
 spec is merged. The milestone (open/closed + issue progress) is where status
@@ -112,7 +112,8 @@ deltas). These fold the lived-experience gaps back into the queue:
   referenced by `plan_exercises.exercise_id` like any catalog row, authored via a
   `create_exercise` MCP tool and surfaced in `search_exercises`. Split out of
   Phase 15 at its acceptance gate to keep the prescription migration focused.
-  Depends on Phase 14 (search) and Phase 15 (prescription).
+  Depends on Phase 14 (the `exercises` table + search) only — a plan references a
+  custom exercise regardless of prescription structure.
 
 ## Living-spec themes
 
