@@ -41,18 +41,25 @@ alter table public.exercises
 -- both `name` and the `aliases` array under one ranking system (no second
 -- index/ranking).
 --
--- A wrapper is required: a GIN trigram expression index demands an IMMUTABLE
--- expression, but `array_to_string` is only STABLE and `aliases::text` is not
--- immutable either, so neither can be inlined into the index. This SQL function
--- is pure, deterministic string concatenation over its arguments, so declaring
--- it IMMUTABLE is correct; it references only the pg_catalog `array_to_string`,
--- giving no search_path hijack surface.
+-- A wrapper is required: both a GIN trigram expression index and a STORED
+-- generated column demand an IMMUTABLE expression, but `array_to_string` is only
+-- STABLE and `aliases::text` is not immutable either, so neither can be inlined
+-- (a generated column fails with "generation expression is not immutable").
+--
+-- Declaring this wrapper IMMUTABLE is correct, not a workaround: the generic
+-- `array_to_string(anyarray, text)` is conservatively marked STABLE only because
+-- some element types have a STABLE output function (e.g. timestamptz, whose text
+-- depends on the TimeZone setting). For this monomorphic `text[]` case the
+-- element output is identity, so the result is a pure, deterministic function of
+-- the inputs. `search_path` is pinned so the unqualified `array_to_string`
+-- always resolves to pg_catalog regardless of the caller's search_path.
 create or replace function public.exercises_search_text(name text, aliases text[])
   returns text
   language sql
   immutable
+  set search_path = pg_catalog, public
   as $$
-    select name || ' ' || coalesce(array_to_string(aliases, ' '), '')
+    select trim(name || ' ' || coalesce(array_to_string(aliases, ' '), ''))
   $$;
 
 -- GIN trigram index over name + aliases, backing the `<%` / `%` operators and
