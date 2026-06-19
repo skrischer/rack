@@ -47,6 +47,8 @@ interface ExerciseRow {
   category: string | null;
   muscles: string[] | null;
   equipment: string[] | null;
+  license: string | null;
+  license_author: string | null;
   aliases: string[] | null;
   is_canonical: boolean;
   user_id: string | null;
