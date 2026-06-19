@@ -58,6 +58,8 @@ the default branch with a milestone and issues.
   exercise regardless of prescription shape).
 - Catalog search internals — Phase 14 (this phase only widens what RLS returns
   and adds the custom indicator).
+- `update_exercise` / `delete_exercise` for managing own customs — deferred (a
+  later nicety; the FK RESTRICT already protects a referenced custom).
 
 ## Constraints
 
@@ -96,8 +98,8 @@ the default branch with a milestone and issues.
 | `create_exercise` input: `name` required; `category`, `equipment`, `primaryMuscles`, `aliases` optional; `is_canonical` stays false; `user_id` injected from auth | A custom exercise needs to be nameable and searchable; canonical is a curated catalog property, not a user one | 2026-06-19 |
 | Custom-ness is derived from `user_id` (no separate `is_custom` column); `search_exercises` surfaces it in the projection | No redundant column; the user-scoped search already returns own customs via RLS | 2026-06-19 |
 | Depends on Phase 14 (#15) only — the `exercises` search + projection — not Phase 15 | A plan references a custom exercise irrespective of prescription structure; this corrects the roadmap intent's over-stated Phase 15 edge | 2026-06-19 |
-| OPEN — live highlighting: add `source` + `updated_at` to `exercises` and put it in the Realtime publication so an agent-created custom highlights live (USP consistency), vs. keep `exercises` as plain reference data (custom rows created but outside the live-highlight loop) | resolved at the spec-acceptance gate | — |
-| OPEN — tool surface: `create_exercise` only, vs. also `update_exercise` / `delete_exercise` for managing own customs (delete is RESTRICT-protected when referenced) | resolved at the spec-acceptance gate | — |
+| `exercises` stays plain reference data — no `source`/`updated_at`, not added to the Realtime publication; the referencing `plan_exercises` row already highlights live | Spec-acceptance gate — keeps the catalog table clean; custom-exercise highlighting via the plan row is enough | 2026-06-19 |
+| Tool surface is `create_exercise` only; `update_exercise`/`delete_exercise` are deferred | Spec-acceptance gate — create closes the core gap (reference a missing exercise); management is a later nicety, delete is FK-RESTRICT-protected anyway | 2026-06-19 |
 
 ## Tracking
 
@@ -136,3 +138,6 @@ Each issue references this spec path in its body.
   per-action RLS policies (UPDATE `using`+`with check`, SELECT untouched/compound),
   the partial index predicate (`where user_id is not null`), the explicit
   `EXERCISE_COLUMNS` projection change, and the camelCase→column mapping.
+- 2026-06-19: Spec-acceptance gate — `exercises` stays plain reference data (no
+  source/Realtime); tool surface is `create_exercise` only. Human prerequisites:
+  none. Spec accepted.
