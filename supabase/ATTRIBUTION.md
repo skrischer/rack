@@ -6,7 +6,8 @@ The `public.exercises` catalog seeded by `supabase/seed.sql` is derived from the
 exercise database of the **wger Workout Manager** project.
 
 - Source: https://wger.de — exercise database via the public REST API
-  (`https://wger.de/api/v2/exerciseinfo/?language=2`).
+  (`https://wger.de/api/v2/exerciseinfo/`, all languages: the English
+  translation is the catalog name and the other-language names seed `aliases`).
 - License: **Creative Commons Attribution-ShareAlike 4.0 International
   (CC-BY-SA 4.0)** — https://creativecommons.org/licenses/by-sa/4.0/
 - Per-row attribution: each seeded row carries `license` and `license_author`
@@ -28,9 +29,9 @@ AGPL-licensed) is incorporated into this project.
 
 ### Regenerating the seed
 
-1. `node supabase/seed/fetch-wger.mjs` — fetches the English catalog from the
-   wger API into `supabase/seed/wger/exercises.json` (the raw export; gitignored,
-   ~4 MB).
+1. `node supabase/seed/fetch-wger.mjs` — fetches the full catalog (all languages)
+   from the wger API into `supabase/seed/wger/exercises.json` (the raw export;
+   gitignored, ~4 MB).
 2. `node supabase/seed/import-wger.mjs` — transforms that export into the
    committed `supabase/seed.sql`.
 

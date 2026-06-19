@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-// Fetch the English wger exercise catalog (CC-BY-SA 4.0) and store the raw
-// export under supabase/seed/wger/exercises.json.
+// Fetch the full wger exercise catalog (CC-BY-SA 4.0) and store the raw export
+// under supabase/seed/wger/exercises.json.
 //
 // This is the ONLINE data-acquisition step. The committed importer
 // (import-wger.mjs) reads the saved file OFFLINE, so the SQL transform is
 // reproducible without network access. Re-run this only to refresh the source
 // data from https://wger.de/api/v2/.
+//
+// ALL languages are fetched (no `language=` filter): the importer keeps the
+// English (language=2) translation as the catalog name and turns every other
+// translation name into a search alias (issue #189). Without the filter the
+// per-exercise translations[] carries every language; with it, only English.
+// Entries with no English translation are skipped by the importer.
 //
 // Data source: wger Workout Manager (https://wger.de) — exercise database
 // licensed CC-BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
@@ -17,11 +23,10 @@ import { fileURLToPath } from "node:url";
 const SELF_DIR = dirname(fileURLToPath(import.meta.url));
 const OUT_FILE = join(SELF_DIR, "wger", "exercises.json");
 const API = "https://wger.de/api/v2/exerciseinfo/";
-const LANGUAGE_EN = 2;
 const PAGE_SIZE = 100;
 
 async function fetchPage(offset) {
-  const url = `${API}?language=${LANGUAGE_EN}&limit=${PAGE_SIZE}&offset=${offset}`;
+  const url = `${API}?limit=${PAGE_SIZE}&offset=${offset}`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) {
     throw new Error(`wger API ${res.status} ${res.statusText} for ${url}`);
