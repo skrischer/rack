@@ -109,6 +109,9 @@ function registerCreate(
   server.registerTool(
     name,
     { title: name, description: `Create a ${table} row for the caller.`, inputSchema: createSchema },
+    // The SDK validates `input` against `createSchema` before this fires, so the
+    // cast from the SDK's erased `unknown` (a non-generic z.ZodType loses the
+    // inferred output type) to a record is sound.
     async (input) => createRow(auth, table, input as Record<string, unknown>),
   );
 }
