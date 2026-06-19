@@ -110,7 +110,6 @@ describe('read tools', () => {
         'search_exercises',
       ]),
     );
-    expect(names).not.toContain('create_plan');
   });
 
   it('advertises readOnlyHint on read tools and not on write tools', async () => {
@@ -205,14 +204,16 @@ describe('read tools', () => {
     expect(within.map((log) => log.id)).toContain(treeA.setLogId);
   });
 
-  it('search_exercises returns matching public catalog rows', async () => {
+  it('search_exercises returns ranked public catalog rows, best match first', async () => {
     const client = await clientFor(keyA);
     const rows = parsePayload(await call(client, 'search_exercises', { q: 'squat' })) as Array<{
       id: string;
       name: string;
     }>;
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((row) => row.name.toLowerCase().includes('squat'))).toBe(true);
+    // Trigram word-similarity matches name + aliases, so an alias-only row may
+    // appear; the top-ranked row for a plain single token is an exact name match.
+    expect(rows[0]?.name.toLowerCase()).toContain('squat');
   });
 
   it('rejects malformed input with a structured error naming the field', async () => {
@@ -224,9 +225,15 @@ describe('read tools', () => {
     expect(message).toContain('planId');
   });
 
-  it('rejects a missing required search term naming the field', async () => {
+  it('browses the catalog when search_exercises is called with no q', async () => {
     const client = await clientFor(keyA);
-    const result = await call(client, 'search_exercises', {});
+    const rows = parsePayload(await call(client, 'search_exercises', {})) as unknown[];
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it('rejects a non-string search term naming the field', async () => {
+    const client = await clientFor(keyA);
+    const result = await call(client, 'search_exercises', { q: 123 });
     expect(result.isError).toBe(true);
     const block = result.content[0];
     const message = block?.type === 'text' ? block.text : '';

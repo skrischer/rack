@@ -179,42 +179,59 @@ const repsField = z
 /** The named `plan_group_type` enum values, shared by create/update. */
 const groupTypeField = z.enum(['superset', 'circuit']).optional();
 
+/**
+ * Rep-range invariant; only constrains when both bounds are present. Exported so
+ * the nested `create_plan` input refines exactly like the per-row create.
+ */
+export const repRangeOk = (v: { repMin?: number; repMax?: number }): boolean =>
+  v.repMin === undefined || v.repMax === undefined || v.repMin <= v.repMax;
+
+/** RIR-range invariant; only constrains when both bounds are present. */
+export const rirRangeOk = (v: { rirLow?: number; rirHigh?: number }): boolean =>
+  v.rirLow === undefined || v.rirHigh === undefined || v.rirLow <= v.rirHigh;
+
+/**
+ * Day fields shared by `create_plan_days` and the nested `create_plan` input
+ * (the parent `planId` is implicit when a day is nested under its plan).
+ */
+export const planDayFields = {
+  position: z.number().int().min(0),
+  title: z.string().min(1).optional(),
+  focus: z.string().min(1).optional(),
+  tag: z.string().min(1).optional(),
+};
+
+/**
+ * Phase 15 typed prescription + per-day grouping fields shared by
+ * `create_plan_exercises` and the nested `create_plan` input (the parent `dayId`
+ * is implicit when an exercise is nested under its day). The legacy
+ * `target`/`rir`/`superset_label` fields are intentionally absent.
+ */
+export const planExerciseFields = {
+  exerciseId: uuid('exerciseId'),
+  position: z.number().int().min(0),
+  sets: z.number().int().positive().optional(),
+  repMin: z.number().int().min(0).optional(),
+  repMax: z.number().int().min(0).optional(),
+  rirLow: z.number().int().min(0).optional(),
+  rirHigh: z.number().int().min(0).optional(),
+  restSeconds: z.number().int().min(0).optional(),
+  cue: z.string().min(1).optional(),
+  supersetId: z.number().int().min(0).optional(),
+  groupType: groupTypeField,
+};
+
 /** Per-table create schemas (the id is server-assigned, never accepted). */
 const CREATE_SCHEMAS = {
   plans: z.object({
     name: z.string().min(1, { message: 'name must not be empty' }),
     kind: z.string().min(1).optional(),
   }),
-  plan_days: z.object({
-    planId: uuid('planId'),
-    position: z.number().int().min(0),
-    title: z.string().min(1).optional(),
-    focus: z.string().min(1).optional(),
-    tag: z.string().min(1).optional(),
-  }),
+  plan_days: z.object({ planId: uuid('planId'), ...planDayFields }),
   plan_exercises: z
-    .object({
-      dayId: uuid('dayId'),
-      exerciseId: uuid('exerciseId'),
-      position: z.number().int().min(0),
-      sets: z.number().int().positive().optional(),
-      repMin: z.number().int().min(0).optional(),
-      repMax: z.number().int().min(0).optional(),
-      rirLow: z.number().int().min(0).optional(),
-      rirHigh: z.number().int().min(0).optional(),
-      restSeconds: z.number().int().min(0).optional(),
-      cue: z.string().min(1).optional(),
-      supersetId: z.number().int().min(0).optional(),
-      groupType: groupTypeField,
-    })
-    .refine((v) => v.repMin === undefined || v.repMax === undefined || v.repMin <= v.repMax, {
-      message: 'repMin must be less than or equal to repMax',
-      path: ['repMin'],
-    })
-    .refine((v) => v.rirLow === undefined || v.rirHigh === undefined || v.rirLow <= v.rirHigh, {
-      message: 'rirLow must be less than or equal to rirHigh',
-      path: ['rirLow'],
-    }),
+    .object({ dayId: uuid('dayId'), ...planExerciseFields })
+    .refine(repRangeOk, { message: 'repMin must be less than or equal to repMax', path: ['repMin'] })
+    .refine(rirRangeOk, { message: 'rirLow must be less than or equal to rirHigh', path: ['rirLow'] }),
   set_logs: z.object({
     planExerciseId: uuid('planExerciseId'),
     date: z.iso.date({ message: 'date must be an ISO date (YYYY-MM-DD)' }).optional(),
