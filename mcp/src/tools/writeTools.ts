@@ -107,7 +107,15 @@ function registerCreate(
 ): void {
   server.registerTool(
     name,
-    { title: name, description: `Create a ${table} row for the caller.`, inputSchema: createShape },
+    {
+      title: name,
+      description:
+        `Create one ${table} row for the caller (written with source='agent'). ` +
+        `Params: the ${table} fields (Zod-validated; id and user_id are server-assigned, ` +
+        `never accepted from the caller). ` +
+        `Returns: the created row.`,
+      inputSchema: createShape,
+    },
     async (input) => createRow(auth, table, input),
   );
 }
@@ -126,7 +134,14 @@ function registerUpdate(
   );
   server.registerTool(
     name,
-    { title: name, description: `Update one of the caller's ${table} rows.`, inputSchema: schema },
+    {
+      title: name,
+      description:
+        `Update one of the caller's ${table} rows by id (forces source='agent'). ` +
+        `Params: id (required UUID) plus at least one ${table} field to change (Zod-validated). ` +
+        `Returns: the updated row; errors if the id is not found or not owned.`,
+      inputSchema: schema,
+    },
     async ({ id, ...patch }) => updateRow(auth, table, id, patch),
   );
 }
@@ -142,7 +157,10 @@ function registerDelete(
     name,
     {
       title: name,
-      description: `Delete one of the caller's ${table} rows by id.`,
+      description:
+        `Delete one of the caller's ${table} rows by id (hard delete, RLS-scoped). ` +
+        `Params: id (required UUID). ` +
+        `Returns: { deleted: <id> }; errors if the id is not found or not owned.`,
       inputSchema: { id: uuid('id') },
     },
     async ({ id }) => deleteRow(auth, table, id),

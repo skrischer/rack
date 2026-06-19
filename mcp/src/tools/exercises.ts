@@ -56,8 +56,14 @@ export function registerExerciseTools(server: McpServer, auth: AuthContext): voi
     'search_exercises',
     {
       title: 'Search exercises',
-      description: 'Search the global exercise catalog by name (case-insensitive).',
+      description:
+        'Search the global exercise catalog by name (case-insensitive substring match). ' +
+        'Params: q (required, non-empty term), category (optional exact filter), ' +
+        'limit (optional, 1-100, default 25). ' +
+        'Returns: an array of catalog rows (id, name, category, muscles, equipment, ' +
+        'license, license_author) ordered by name.',
       inputSchema,
+      annotations: { readOnlyHint: true },
     },
     async (input) => jsonResult(await searchCatalog(auth, input)),
   );

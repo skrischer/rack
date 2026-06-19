@@ -29,7 +29,10 @@ export function buildServer(auth: AuthContext): McpServer {
     'ping',
     {
       title: 'Ping',
-      description: 'Health check that confirms the rack-MCP server is reachable.',
+      description:
+        'Health check that confirms the rack-MCP server is reachable. ' +
+        'Params: none. Returns: the literal text "pong".',
+      annotations: { readOnlyHint: true },
     },
     () => ({ content: [{ type: 'text', text: 'pong' }] }),
   );

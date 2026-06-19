@@ -28,8 +28,12 @@ function registerListPlans(server: McpServer, auth: AuthContext): void {
     'list_plans',
     {
       title: 'List plans',
-      description: "List the caller's training plans, newest first.",
+      description:
+        "List the caller's training plans, newest first. " +
+        'Params: none. ' +
+        'Returns: an array of plan rows (id, name, kind, source, created_at, updated_at).',
       inputSchema: {},
+      annotations: { readOnlyHint: true },
     },
     async () => {
       const { data, error } = await auth.supabase
@@ -50,8 +54,13 @@ function registerGetPlan(server: McpServer, auth: AuthContext): void {
     'get_plan',
     {
       title: 'Get plan tree',
-      description: "Get one of the caller's plans with its days and each day's exercises.",
+      description:
+        "Get one of the caller's plans with its days and each day's exercises. " +
+        'Params: planId (required UUID). ' +
+        'Returns: { plan, days, exercises } where plan is null when no plan with that id ' +
+        'is owned by the caller; days and exercises are ordered by position.',
       inputSchema: { planId: z.uuid({ message: 'planId must be a UUID' }) },
+      annotations: { readOnlyHint: true },
     },
     async ({ planId }) => jsonResult(await loadPlanTree(auth, planId)),
   );
