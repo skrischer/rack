@@ -1,6 +1,7 @@
 package de.rack.app.ui.session
 
 import de.rack.app.domain.ExerciseType
+import de.rack.app.domain.GroupType
 import de.rack.app.domain.PlanExercise
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -75,8 +76,8 @@ class SessionClassificationTest {
     fun `rest prompt resolves the superset group context for a grouped member`() {
         val exercises =
             listOf(
-                exercise(id = "a", category = "Chest", label = "S1"),
-                exercise(id = "b", category = "Back", label = "S1"),
+                exercise(id = "a", category = "Chest", supersetId = 1, groupType = GroupType.SUPERSET),
+                exercise(id = "b", category = "Back", supersetId = 1, groupType = GroupType.SUPERSET),
             )
 
         val prompt = restPromptFor(exercises, "b")
@@ -94,7 +95,8 @@ class SessionClassificationTest {
         id: String = "a",
         category: String? = null,
         equipment: List<String> = emptyList(),
-        label: String? = null,
+        supersetId: Int? = null,
+        groupType: GroupType? = null,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -102,10 +104,15 @@ class SessionClassificationTest {
         name = id,
         category = category,
         position = 0,
-        target = "3 x 8",
-        rir = null,
+        sets = null,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = label,
+        supersetId = supersetId,
+        groupType = groupType,
         equipment = equipment,
     )
 }

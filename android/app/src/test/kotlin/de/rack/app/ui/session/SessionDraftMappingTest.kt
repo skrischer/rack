@@ -19,8 +19,8 @@ class SessionDraftMappingTest {
     fun `restore refocuses the cursor step and keeps the ticked sets and entries`() {
         val exercises =
             listOf(
-                exercise("a", target = "2 x 5"),
-                exercise("b", target = "2 x 5"),
+                exercise("a", sets = 2),
+                exercise("b", sets = 2),
             )
         val prefilled = prefillEntries(exercises, emptyMap(), WeightUnit.KG)
         val draft =
@@ -43,7 +43,7 @@ class SessionDraftMappingTest {
 
     @Test
     fun `a draft at the last cursor restores a finished session`() {
-        val exercises = listOf(exercise("a", target = "2 x 5"))
+        val exercises = listOf(exercise("a", sets = 2))
         val prefilled = prefillEntries(exercises, emptyMap(), WeightUnit.KG)
         val draft = SessionDraft(doneCount = 2, entries = emptyMap())
 
@@ -56,7 +56,7 @@ class SessionDraftMappingTest {
 
     private fun exercise(
         id: String,
-        target: String?,
+        sets: Int?,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -64,9 +64,14 @@ class SessionDraftMappingTest {
         name = id,
         category = null,
         position = 0,
-        target = target,
-        rir = null,
+        sets = sets,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = null,
+        supersetId = null,
+        groupType = null,
     )
 }

@@ -27,10 +27,23 @@ data class PlanDay(
     val tag: String?,
 )
 
+/** The kind of explicit exercise grouping carried by `plan_exercises.group_type`. */
+enum class GroupType {
+    SUPERSET,
+    CIRCUIT,
+}
+
 /**
  * An exercise placed on a plan day (`plan_exercises`), with its catalog name,
  * [category], and [equipment]. The latter two feed the Phase-9 compound/isolation
  * classification that selects the rest default (docs/specs/spec-session-player.md).
+ *
+ * The prescription is typed (Phase 15, docs/specs/spec-structured-prescription.md):
+ * [sets], a [repMin]–[repMax] rep range, a [rirLow]–[rirHigh] RIR range, and a
+ * per-exercise [restSeconds]. Grouping is explicit: [supersetId] is a per-day group
+ * key binding consecutive members and [groupType] distinguishes a superset from a
+ * circuit. All prescription/grouping fields are nullable (an authored plan may omit
+ * any of them).
  */
 data class PlanExercise(
     val id: String,
@@ -39,10 +52,15 @@ data class PlanExercise(
     val name: String,
     val category: String?,
     val position: Int,
-    val target: String?,
-    val rir: Int?,
+    val sets: Int?,
+    val repMin: Int?,
+    val repMax: Int?,
+    val rirLow: Int?,
+    val rirHigh: Int?,
+    val restSeconds: Int?,
     val cue: String?,
-    val supersetLabel: String?,
+    val supersetId: Int?,
+    val groupType: GroupType?,
     val equipment: List<String> = emptyList(),
 )
 

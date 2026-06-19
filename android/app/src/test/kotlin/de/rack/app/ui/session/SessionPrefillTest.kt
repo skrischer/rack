@@ -9,14 +9,14 @@ import kotlin.test.assertEquals
 /**
  * Covers the pure session-player display logic the set-table screen renders (issue #58 /
  * #161, docs/specs/spec-session-player.md): [prefillEntries] seeds kg/RIR/reps from the
- * last log and the target, and [previousSets] builds the per-set "Vorher" strings from the
- * last logged session's matching set. kg and RIR are single per-exercise values; reps and
- * the previous-performance column are per-set.
+ * last log and the typed prescription, and [previousSets] builds the per-set "Vorher"
+ * strings from the last logged session's matching set. kg and RIR are single per-exercise
+ * values; reps and the previous-performance column are per-set.
  */
 class SessionPrefillTest {
     @Test
     fun `prefill takes kg and rir from the last log and reps per set`() {
-        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        val exercise = exercise("a", sets = 3, repMin = 8, repMax = 8, rirLow = 1)
         val last = log("a", weight = 60.0, reps = listOf(8, 7, 6), rir = 2)
 
         val entries = prefillEntries(listOf(exercise), mapOf("a" to last), WeightUnit.KG).getValue("a")
@@ -28,7 +28,7 @@ class SessionPrefillTest {
 
     @Test
     fun `prefill converts the last log weight to the selected unit`() {
-        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        val exercise = exercise("a", sets = 3, repMin = 8, repMax = 8, rirLow = 1)
         // 61.25 kg -> 135.0 lb at 0.5 lb steps.
         val last = log("a", weight = 61.25, reps = listOf(8), rir = 2)
 
@@ -38,19 +38,19 @@ class SessionPrefillTest {
     }
 
     @Test
-    fun `prefill falls back to target rir and target reps with no last log`() {
-        val exercise = exercise("a", target = "4 x 5-8", rir = 2, label = null)
+    fun `prefill falls back to the lower target rir and the rep range with no last log`() {
+        val exercise = exercise("a", sets = 4, repMin = 5, repMax = 8, rirLow = 2)
 
         val entries = prefillEntries(listOf(exercise), emptyMap(), WeightUnit.KG).getValue("a")
 
         assertEquals("", entries.weight)
         assertEquals("2", entries.rir)
-        assertEquals(mapOf(0 to "5-8", 1 to "5-8", 2 to "5-8", 3 to "5-8"), entries.reps)
+        assertEquals(mapOf(0 to "5–8", 1 to "5–8", 2 to "5–8", 3 to "5–8"), entries.reps)
     }
 
     @Test
     fun `previous shows the last session's matching set as weight times reps per set`() {
-        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        val exercise = exercise("a", sets = 3, repMin = 8, repMax = 8, rirLow = 1)
         val last = log("a", weight = 82.5, reps = listOf(8, 7, 7), rir = 1)
 
         val previous = previousSets(listOf(exercise), mapOf("a" to last), WeightUnit.KG).getValue("a")
@@ -60,7 +60,7 @@ class SessionPrefillTest {
 
     @Test
     fun `previous is blank per set with no last log or no matching rep`() {
-        val exercise = exercise("a", target = "3 x 8", rir = 1, label = null)
+        val exercise = exercise("a", sets = 3, repMin = 8, repMax = 8, rirLow = 1)
         // Last log has only two sets; the third has no matching previous rep.
         val last = log("a", weight = 80.0, reps = listOf(10, 8), rir = 1)
 
@@ -73,9 +73,10 @@ class SessionPrefillTest {
 
     private fun exercise(
         id: String,
-        target: String?,
-        rir: Int?,
-        label: String?,
+        sets: Int?,
+        repMin: Int? = null,
+        repMax: Int? = null,
+        rirLow: Int? = null,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -83,10 +84,15 @@ class SessionPrefillTest {
         name = id,
         category = null,
         position = 0,
-        target = target,
-        rir = rir,
+        sets = sets,
+        repMin = repMin,
+        repMax = repMax,
+        rirLow = rirLow,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = label,
+        supersetId = null,
+        groupType = null,
     )
 
     private fun log(

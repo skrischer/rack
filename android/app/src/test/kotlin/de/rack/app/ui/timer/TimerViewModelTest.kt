@@ -229,9 +229,14 @@ class TimerViewModelTest {
         name = name,
         category = null,
         position = 0,
-        target = null,
-        rir = null,
+        sets = null,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = null,
+        supersetId = null,
+        groupType = null,
     )
 }

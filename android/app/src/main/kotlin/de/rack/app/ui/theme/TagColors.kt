@@ -1,6 +1,7 @@
 package de.rack.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import de.rack.app.domain.GroupType
 
 /**
  * Maps a plan-day tag to its Recomp accent color. The palette is limited to the
@@ -16,15 +17,15 @@ fun RecompColors.tagColor(tag: String?): Color =
         else -> volt
     }
 
-/** A run of consecutive plan-exercises sharing a non-null `superset_label`. */
+/** A run of consecutive plan-exercises sharing a non-null `superset_id`. */
 enum class SupersetKind {
     /** Not part of a multi-exercise group (standalone exercise). */
     NONE,
 
-    /** Exactly two consecutive exercises with the same label. */
+    /** A two-or-more member group authored as a superset. */
     SUPERSET,
 
-    /** Three or more consecutive exercises with the same label. */
+    /** A two-or-more member group authored as a circuit. */
     CIRCUIT,
 }
 
@@ -32,13 +33,20 @@ private const val SUPERSET_SIZE = 2
 private const val CIRCUIT_MIN_SIZE = 3
 
 /**
- * Classifies a superset run by its size: 2 exercises = superset, 3+ = circuit, and
- * a single exercise (or no label) = none. Both grouped kinds render with the violet
- * (`--ss`) treatment per docs/design-tokens.md.
+ * Classifies a grouped run from its explicit [groupType] and [runSize]: a run of
+ * fewer than two members is always [SupersetKind.NONE]; otherwise the authored
+ * [GroupType] decides superset vs circuit. When the group type is missing the size
+ * is the fallback (2 = superset, 3+ = circuit). Both grouped kinds render with the
+ * violet (`--ss`) treatment per docs/design-tokens.md.
  */
-fun supersetKind(runSize: Int): SupersetKind =
+fun supersetKind(
+    groupType: GroupType?,
+    runSize: Int,
+): SupersetKind =
     when {
+        runSize < SUPERSET_SIZE -> SupersetKind.NONE
+        groupType == GroupType.SUPERSET -> SupersetKind.SUPERSET
+        groupType == GroupType.CIRCUIT -> SupersetKind.CIRCUIT
         runSize >= CIRCUIT_MIN_SIZE -> SupersetKind.CIRCUIT
-        runSize == SUPERSET_SIZE -> SupersetKind.SUPERSET
-        else -> SupersetKind.NONE
+        else -> SupersetKind.SUPERSET
     }

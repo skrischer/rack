@@ -14,9 +14,9 @@ import de.rack.app.ui.theme.supersetKind
  * isolation 60-90 s, superset 60-90 s, circuit 30-45 s). Exercise type resolves
  * from the existing schema: the catalog `category` decides compound vs isolation
  * via [COMPOUND_CATEGORIES] (isolation is the safe fallback for any unmapped
- * category), while the `superset_label` group size decides superset (2 members)
- * vs circuit (3+ members). Group size is the count of `plan_exercises` in the
- * same `plan_day` sharing the same `superset_label` value.
+ * category), while a `superset_id` group's `group_type` decides superset vs circuit
+ * (a group is the consecutive `plan_exercises` in the same `plan_day` sharing a
+ * `superset_id`).
  */
 
 /** Default rest after a compound (multi-joint) exercise: 150 s (2.5 min midpoint). */
@@ -54,17 +54,17 @@ enum class ExerciseType {
 
 /**
  * The single Phase-8 type -> duration map: resolves the initial rest seconds from a
- * caller-resolved exercise [type] and its `superset_label` [groupSize] (the count
- * of plan-exercises in the same plan-day sharing the same label). A group of 2 rests
- * as a superset and 3+ as a circuit, overriding the per-exercise [type]; a standalone
- * exercise rests by its [type] (compound 2-3 min, isolation 60-90 s). This is the only
- * place the type -> duration mapping lives, so no caller duplicates it.
+ * caller-resolved exercise [type] and its group [kind]. A superset/circuit group
+ * rests as a superset/circuit, overriding the per-exercise [type]; a standalone
+ * exercise ([SupersetKind.NONE]) rests by its [type] (compound 2-3 min, isolation
+ * 60-90 s). This is the only place the type -> duration mapping lives, so no caller
+ * duplicates it.
  */
 fun restSecondsFor(
     type: ExerciseType,
-    groupSize: Int,
+    kind: SupersetKind,
 ): Int =
-    when (supersetKind(groupSize)) {
+    when (kind) {
         SupersetKind.SUPERSET -> REST_SUPERSET_SECONDS
         SupersetKind.CIRCUIT -> REST_CIRCUIT_SECONDS
         SupersetKind.NONE -> if (type == ExerciseType.COMPOUND) REST_COMPOUND_SECONDS else REST_ISOLATION_SECONDS
@@ -72,8 +72,7 @@ fun restSecondsFor(
 
 /**
  * Resolves the initial rest duration (seconds) for an exercise from its catalog
- * [category] and its `superset_label` [groupSize] (the count of plan-exercises in
- * the same plan-day sharing the same label). The coarse category -> type step uses
+ * [category] and its group [kind]. The coarse category -> type step uses
  * [isCompoundCategory]; the type -> duration step delegates to [restSecondsFor] so the
  * duration map stays single-sourced. The Phase-3 log flow keeps this category-based
  * entry; the Phase-9 session player classifies via its own richer rule and calls
@@ -81,11 +80,11 @@ fun restSecondsFor(
  */
 fun resolveRestSeconds(
     category: String?,
-    groupSize: Int,
+    kind: SupersetKind,
 ): Int =
     restSecondsFor(
         type = if (isCompoundCategory(category)) ExerciseType.COMPOUND else ExerciseType.ISOLATION,
-        groupSize = groupSize,
+        kind = kind,
     )
 
 /**
@@ -108,16 +107,17 @@ data class GroupRotation(
 
 /**
  * Returns the [GroupRotation] for the exercise at [currentIndex] within its
- * superset/circuit [group] (the position-ordered run sharing one `superset_label`).
- * For a single exercise (or an out-of-range index) the role is
- * [SupersetKind.NONE] with no next station; for a superset/circuit the next is the
- * following member, wrapping to the first after the last.
+ * superset/circuit [group] (the position-ordered run sharing one `superset_id`).
+ * The role comes from the group's `group_type` (size is the fallback); for a single
+ * exercise (or an out-of-range index) the role is [SupersetKind.NONE] with no next
+ * station; for a superset/circuit the next is the following member, wrapping to the
+ * first after the last.
  */
 fun resolveGroupRotation(
     group: List<PlanExercise>,
     currentIndex: Int,
 ): GroupRotation {
-    val role = supersetKind(group.size)
+    val role = supersetKind(group.firstOrNull()?.groupType, group.size)
     if (role == SupersetKind.NONE || currentIndex !in group.indices) {
         return GroupRotation(SupersetKind.NONE, null)
     }

@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class SessionSummaryTest {
     @Test
     fun `summary counts ticked sets and volume from per-exercise weight times reps`() {
-        val a = exercise("a", target = "3 x 8")
+        val a = exercise("a", sets = 3)
         val done = listOf(step("a", 0), step("a", 1))
         val entries = mapOf("a" to ExerciseEntries(weight = "60", rir = "1", reps = mapOf(0 to "8", 1 to "6")))
 
@@ -32,7 +32,7 @@ class SessionSummaryTest {
 
     @Test
     fun `volume uses the canonical kg weight when entries are in pounds`() {
-        val a = exercise("a", target = "3 x 8")
+        val a = exercise("a", sets = 3)
         val done = listOf(step("a", 0))
         // 135 lb entry -> 61.25 kg stored -> volume in kg.
         val entries = mapOf("a" to ExerciseEntries(weight = "135", reps = mapOf(0 to "8")))
@@ -44,8 +44,8 @@ class SessionSummaryTest {
 
     @Test
     fun `an exercise with no reps and no weight is skipped from the summary`() {
-        val a = exercise("a", target = "3 x 8")
-        val b = exercise("b", target = "3 x 8")
+        val a = exercise("a", sets = 3)
+        val b = exercise("b", sets = 3)
         // a is ticked with reps; b is ticked but left blank (no reps, no weight).
         val done = listOf(step("a", 0), step("b", 0))
         val entries =
@@ -61,7 +61,7 @@ class SessionSummaryTest {
 
     @Test
     fun `a fully empty session yields an empty summary`() {
-        val a = exercise("a", target = "3 x 8")
+        val a = exercise("a", sets = 3)
 
         val summary = buildSessionSummary(listOf(a), done = emptyList(), entries = emptyMap(), unit = WeightUnit.KG)
 
@@ -71,7 +71,7 @@ class SessionSummaryTest {
 
     @Test
     fun `weight-only ticked set keeps the exercise but logs no reps`() {
-        val a = exercise("a", target = "2 x 5")
+        val a = exercise("a", sets = 2)
         val done = listOf(step("a", 0))
         val entries = mapOf("a" to ExerciseEntries(weight = "100", reps = mapOf(0 to "0")))
 
@@ -105,7 +105,7 @@ class SessionSummaryTest {
 
     private fun exercise(
         id: String,
-        target: String?,
+        sets: Int?,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -113,9 +113,14 @@ class SessionSummaryTest {
         name = id,
         category = null,
         position = 0,
-        target = target,
-        rir = null,
+        sets = sets,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = null,
+        supersetId = null,
+        groupType = null,
     )
 }
