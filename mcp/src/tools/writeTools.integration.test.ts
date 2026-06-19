@@ -166,7 +166,9 @@ describe('write tools', () => {
         dayId: day.id,
         exerciseId,
         position: 0,
-        target: '3x8',
+        sets: 3,
+        repMin: 8,
+        repMax: 8,
       }),
     );
     expect(exercise.source).toBe('agent');
@@ -244,5 +246,133 @@ describe('write tools', () => {
     const result = await call(client, 'delete_plans', { id: treeB.planId });
     expect(result.isError).toBe(true);
     expect(await readColumn(clientB, 'plans', treeB.planId, 'id')).toBe(treeB.planId);
+  });
+});
+
+/** The exercises returned by `get_plan` for a plan tree. */
+interface PlanExerciseRow {
+  id: string;
+  superset_id: number | null;
+  group_type: string | null;
+}
+
+describe('structured plan_exercises prescription', () => {
+  /** Creates a plan and one day for the caller, returning both new ids. */
+  async function newDay(client: Client): Promise<{ planId: string; dayId: string }> {
+    const plan = parsePayload(await call(client, 'create_plans', { name: `p-${randomToken()}` }));
+    const day = parsePayload(await call(client, 'create_plan_days', { planId: plan.id, position: 0 }));
+    return { planId: plan.id as string, dayId: day.id as string };
+  }
+
+  it('round-trips the typed prescription fields on read-back', async () => {
+    const client = await clientFor(keyA);
+    const { dayId } = await newDay(client);
+    const created = parsePayload(
+      await call(client, 'create_plan_exercises', {
+        dayId,
+        exerciseId,
+        position: 0,
+        sets: 3,
+        repMin: 6,
+        repMax: 8,
+        rirLow: 1,
+        rirHigh: 2,
+        restSeconds: 120,
+        cue: 'brace hard',
+      }),
+    );
+    const expected = {
+      sets: 3,
+      rep_min: 6,
+      rep_max: 8,
+      rir_low: 1,
+      rir_high: 2,
+      rest_seconds: 120,
+      cue: 'brace hard',
+    };
+    expect(created).toMatchObject(expected);
+    expect(await readColumn(dataClientA, 'plan_exercises', created.id as string, 'rep_min')).toBe(6);
+  });
+
+  it('reads back a two-member superset and a three-member circuit as groups', async () => {
+    const client = await clientFor(keyA);
+    const { planId, dayId } = await newDay(client);
+    const place = (position: number, supersetId: number, groupType: string): Promise<CallToolResult> =>
+      call(client, 'create_plan_exercises', { dayId, exerciseId, position, supersetId, groupType });
+    await place(0, 1, 'superset');
+    await place(1, 1, 'superset');
+    await place(2, 2, 'circuit');
+    await place(3, 2, 'circuit');
+    await place(4, 2, 'circuit');
+
+    const dayPlan = parsePayload(await call(client, 'get_plan', { planId })) as {
+      exercises: PlanExerciseRow[];
+    };
+    const superset = dayPlan.exercises.filter((e) => e.superset_id === 1);
+    const circuit = dayPlan.exercises.filter((e) => e.superset_id === 2);
+    expect(superset).toHaveLength(2);
+    expect(superset.every((e) => e.group_type === 'superset')).toBe(true);
+    expect(circuit).toHaveLength(3);
+    expect(circuit.every((e) => e.group_type === 'circuit')).toBe(true);
+  });
+
+  it('rejects inverted ranges at the MCP boundary (Zod)', async () => {
+    const client = await clientFor(keyA);
+    const { dayId } = await newDay(client);
+    const repResult = await call(client, 'create_plan_exercises', {
+      dayId,
+      exerciseId,
+      position: 0,
+      repMin: 9,
+      repMax: 6,
+    });
+    expect(repResult.isError).toBe(true);
+    const rirResult = await call(client, 'create_plan_exercises', {
+      dayId,
+      exerciseId,
+      position: 0,
+      rirLow: 3,
+      rirHigh: 1,
+    });
+    expect(rirResult.isError).toBe(true);
+  });
+
+  it('rejects inverted ranges at the database CHECK constraint', async () => {
+    const client = await clientFor(keyA);
+    const { dayId } = await newDay(client);
+    const insert = async (fields: Record<string, unknown>): Promise<unknown> => {
+      const { error } = await dataClientA
+        .from('plan_exercises')
+        .insert({
+          user_id: userA,
+          day_id: dayId,
+          exercise_id: exerciseId,
+          position: 0,
+          source: 'agent',
+          ...fields,
+        })
+        .select('id')
+        .maybeSingle();
+      return error;
+    };
+    expect(await insert({ rep_min: 9, rep_max: 6 })).not.toBeNull();
+    expect(await insert({ rir_low: 3, rir_high: 1 })).not.toBeNull();
+  });
+
+  it('refuses a partial update that would invert the stored range', async () => {
+    const client = await clientFor(keyA);
+    const { dayId } = await newDay(client);
+    const created = parsePayload(
+      await call(client, 'create_plan_exercises', {
+        dayId,
+        exerciseId,
+        position: 0,
+        repMin: 6,
+        repMax: 8,
+      }),
+    );
+    const result = await call(client, 'update_plan_exercises', { id: created.id, repMax: 4 });
+    expect(result.isError).toBe(true);
+    expect(await readColumn(dataClientA, 'plan_exercises', created.id as string, 'rep_max')).toBe(8);
   });
 });

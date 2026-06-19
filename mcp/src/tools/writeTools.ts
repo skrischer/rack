@@ -25,7 +25,8 @@ const RETURNING: Record<string, string> = {
   plans: 'id, name, kind, source, created_at, updated_at',
   plan_days: 'id, plan_id, position, title, focus, tag, source, updated_at',
   plan_exercises:
-    'id, day_id, exercise_id, position, target, rir, cue, superset_label, source, updated_at',
+    'id, day_id, exercise_id, position, sets, rep_min, rep_max, rir_low, rir_high, ' +
+    'rest_seconds, cue, superset_id, group_type, source, updated_at',
   set_logs: 'id, plan_exercise_id, date, weight, reps, rir, logged_at, source, updated_at',
 };
 
@@ -97,18 +98,21 @@ async function deleteRow(auth: AuthContext, table: string, id: string): Promise<
   return jsonResult({ deleted: data.id });
 }
 
-/** Registers `create_<table>`, validating its input via `createShape`. */
+/** Registers `create_<table>`, validating its input via `createSchema`. */
 function registerCreate(
   server: McpServer,
   auth: AuthContext,
   name: string,
   table: string,
-  createShape: ZodRawShape,
+  createSchema: z.ZodType,
 ): void {
   server.registerTool(
     name,
-    { title: name, description: `Create a ${table} row for the caller.`, inputSchema: createShape },
-    async (input) => createRow(auth, table, input),
+    { title: name, description: `Create a ${table} row for the caller.`, inputSchema: createSchema },
+    // The SDK validates `input` against `createSchema` before this fires, so the
+    // cast from the SDK's erased `unknown` (a non-generic z.ZodType loses the
+    // inferred output type) to a record is sound.
+    async (input) => createRow(auth, table, input as Record<string, unknown>),
   );
 }
 
@@ -154,33 +158,53 @@ const repsField = z
   .array(z.number().int().min(0, { message: 'reps must be non-negative integers' }))
   .optional();
 
-/** Per-table create field shapes (the id is server-assigned, never accepted). */
-const CREATE_SHAPES = {
-  plans: { name: z.string().min(1, { message: 'name must not be empty' }), kind: z.string().min(1).optional() },
-  plan_days: {
+/** The named `plan_group_type` enum values, shared by create/update. */
+const groupTypeField = z.enum(['superset', 'circuit']).optional();
+
+/** Per-table create schemas (the id is server-assigned, never accepted). */
+const CREATE_SCHEMAS = {
+  plans: z.object({
+    name: z.string().min(1, { message: 'name must not be empty' }),
+    kind: z.string().min(1).optional(),
+  }),
+  plan_days: z.object({
     planId: uuid('planId'),
     position: z.number().int().min(0),
     title: z.string().min(1).optional(),
     focus: z.string().min(1).optional(),
     tag: z.string().min(1).optional(),
-  },
-  plan_exercises: {
-    dayId: uuid('dayId'),
-    exerciseId: uuid('exerciseId'),
-    position: z.number().int().min(0),
-    target: z.string().min(1).optional(),
-    rir: z.number().int().min(0).optional(),
-    cue: z.string().min(1).optional(),
-    supersetLabel: z.string().min(1).optional(),
-  },
-  set_logs: {
+  }),
+  plan_exercises: z
+    .object({
+      dayId: uuid('dayId'),
+      exerciseId: uuid('exerciseId'),
+      position: z.number().int().min(0),
+      sets: z.number().int().positive().optional(),
+      repMin: z.number().int().min(0).optional(),
+      repMax: z.number().int().min(0).optional(),
+      rirLow: z.number().int().min(0).optional(),
+      rirHigh: z.number().int().min(0).optional(),
+      restSeconds: z.number().int().min(0).optional(),
+      cue: z.string().min(1).optional(),
+      supersetId: z.number().int().min(0).optional(),
+      groupType: groupTypeField,
+    })
+    .refine((v) => v.repMin === undefined || v.repMax === undefined || v.repMin <= v.repMax, {
+      message: 'repMin must be less than or equal to repMax',
+      path: ['repMin'],
+    })
+    .refine((v) => v.rirLow === undefined || v.rirHigh === undefined || v.rirLow <= v.rirHigh, {
+      message: 'rirLow must be less than or equal to rirHigh',
+      path: ['rirLow'],
+    }),
+  set_logs: z.object({
     planExerciseId: uuid('planExerciseId'),
     date: z.iso.date({ message: 'date must be an ISO date (YYYY-MM-DD)' }).optional(),
     weight: z.number().min(0).optional(),
     reps: repsField,
     rir: z.number().int().min(0).optional(),
-  },
-} as const;
+  }),
+};
 
 /** Per-table update patch shapes: every field optional, foreign keys excluded. */
 const UPDATE_SHAPES = {
@@ -193,10 +217,15 @@ const UPDATE_SHAPES = {
   },
   plan_exercises: {
     position: z.number().int().min(0).optional(),
-    target: z.string().min(1).optional(),
-    rir: z.number().int().min(0).optional(),
+    sets: z.number().int().positive().optional(),
+    repMin: z.number().int().min(0).optional(),
+    repMax: z.number().int().min(0).optional(),
+    rirLow: z.number().int().min(0).optional(),
+    rirHigh: z.number().int().min(0).optional(),
+    restSeconds: z.number().int().min(0).optional(),
     cue: z.string().min(1).optional(),
-    supersetLabel: z.string().min(1).optional(),
+    supersetId: z.number().int().min(0).optional(),
+    groupType: groupTypeField,
   },
   set_logs: {
     date: z.iso.date({ message: 'date must be an ISO date (YYYY-MM-DD)' }).optional(),
@@ -213,7 +242,13 @@ function toColumns(input: Record<string, unknown>): Record<string, unknown> {
     dayId: 'day_id',
     exerciseId: 'exercise_id',
     planExerciseId: 'plan_exercise_id',
-    supersetLabel: 'superset_label',
+    repMin: 'rep_min',
+    repMax: 'rep_max',
+    rirLow: 'rir_low',
+    rirHigh: 'rir_high',
+    restSeconds: 'rest_seconds',
+    supersetId: 'superset_id',
+    groupType: 'group_type',
   };
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [rename[key] ?? key, value]),
@@ -224,9 +259,9 @@ function toColumns(input: Record<string, unknown>): Record<string, unknown> {
 function registerTable(
   server: McpServer,
   auth: AuthContext,
-  table: keyof typeof CREATE_SHAPES,
+  table: keyof typeof CREATE_SCHEMAS,
 ): void {
-  registerCreate(server, auth, `create_${table}`, table, CREATE_SHAPES[table]);
+  registerCreate(server, auth, `create_${table}`, table, CREATE_SCHEMAS[table]);
   registerUpdate(server, auth, `update_${table}`, table, UPDATE_SHAPES[table]);
   registerDelete(server, auth, `delete_${table}`, table);
 }
