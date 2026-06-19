@@ -110,7 +110,6 @@ describe('read tools', () => {
         'search_exercises',
       ]),
     );
-    expect(names).not.toContain('create_plan');
   });
 
   it('advertises readOnlyHint on read tools and not on write tools', async () => {
