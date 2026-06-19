@@ -162,3 +162,10 @@ Each issue references this spec path in its body.
 - 2026-06-19: Spec-acceptance gate resolved the three open decisions — targeted
   canonical layer, best-effort equipment derivation, `resolve_exercise` deferred
   to Phase 16. Human prerequisites: none. Spec accepted.
+
+## Implementation outcome (accepted 2026-06-19)
+
+Built and merged (milestone #15: #188, #189, #190); MCP suite green.
+- #188 migration: `pg_trgm` + `unaccent`; `exercises.aliases text[]` + `is_canonical bool`; an IMMUTABLE `public.exercises_search_text(name, aliases)` helper indexed by a GIN `gin_trgm_ops` index (array isn't directly trigram-indexable, so the flattening helper is the single viable form); public-read RLS re-asserted.
+- #189 seed: aliases sourced from a wger all-language re-fetch (the `language=2` filter restricts translations to English — dropped it) plus a curated set; four beta movements guaranteed canonical; Cable/Machine best-effort derived from names (raw retained); junk down-ranked via the `is_canonical` tiebreak, not a junk-detector column. NOTE: `primary_muscles` is enriched separately (not in `seed.sql`), so it is empty after a plain `db reset` — the muscle filter relies on its `coalesce(...,'muscles')` fallback.
+- #190 search: rebuilt as a SECURITY INVOKER SQL RPC `public.search_exercises(...)` (PostgREST cannot express token-AND + summed similarity); token-AND `word_similarity >= 0.4`; rank by summed similarity, then `is_canonical`, then name-similarity tiebreak; equipment/muscle/category filters; optional-`q` filter browse; limit clamped 1..100 in SQL and Zod. `unaccent` intentionally not in the search path (would defeat the GIN index). `resolve_exercise` remains deferred.

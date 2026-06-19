@@ -182,3 +182,10 @@ Each issue references this spec path in its body.
 - 2026-06-19: Spec-acceptance gate — ship both `create_plan` and
   `create_plan_day`; §4.5 is investigate-and-fix in this phase. Human
   prerequisites: none. Spec accepted.
+
+## Implementation outcome (accepted 2026-06-19)
+
+Built and merged (milestone #17: #197, #198, #199); MCP suite green.
+- #197: transactional `create_plan` + `create_plan_day` as SECURITY INVOKER plpgsql functions called via the user-scoped `auth.supabase.rpc()` (no service-role path; RLS via the user JWT); whole-tree atomic rollback on any Zod/FK/CHECK/RLS failure; reuses the Phase-15 typed shapes via exported `planExerciseFields`/`planDayFields`; a shared `insert_plan_day` helper carries an RLS-scoped ownership guard.
+- #198: `readOnlyHint: true` on the read tools (incl. `list_artifacts`) + structured descriptions across the surface.
+- #199: the `get_plan`-after-write-burst hang root cause = unbounded per-request `fetch` (no timeout) causing dead keep-alive socket reuse to stall the post-burst read; trigger is hosted-only / not loopback-reproducible. Fixed in the MCP via a per-request `AbortSignal.timeout` in `supabase.ts` (stateless; no sessions/shared-state/service-role). Residual hosted-only end-to-end verification + optional keep-alive tuning filed as `track:adhoc` #208.

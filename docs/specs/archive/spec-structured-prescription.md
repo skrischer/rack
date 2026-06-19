@@ -151,3 +151,9 @@ Each issue references this spec path in its body.
   `target`/`rir`/`superset_label` columns, beta data disposable), simplifying
   away the transition machinery; custom exercises deferred to a new roadmap
   Phase 17. Human prerequisites: none. Spec accepted.
+
+## Implementation outcome (accepted 2026-06-19)
+
+Built and merged (milestone #16: #193 backend, #194 Android); MCP + Android build green.
+- #193: migration adds typed `sets, rep_min, rep_max, rir_low, rir_high, rest_seconds, superset_id` + named enum `plan_group_type`, DB CHECK on the ranges, drops legacy `target`/`rir`/`superset_label`, clears disposable beta rows, re-asserts owner RLS; MCP `create/update_plan_exercises` + read projections rewritten to typed-only with Zod range validation.
+- #194: `PlanExercise` domain + DTO mapping + plan/session rendering rewritten to the typed fields (rep range, RIR range, rest, superset/circuit badge) via pure formatters; grouping keys on `superset_id` with `group_type` (size fallback). `set_logs.rir` stays a scalar (a logged set's actual effort).
