@@ -24,10 +24,10 @@
 | 11 | Overviews & dashboards | [spec](specs/spec-dashboards.md) | [#11](https://github.com/skrischer/rack/milestone/11) |
 | 12 | Settings & units | [spec](specs/spec-settings.md) | [#12](https://github.com/skrischer/rack/milestone/12) |
 | 13 | Plate calculator & 1RM estimates | [spec](specs/spec-plate-calc-1rm.md) | [#13](https://github.com/skrischer/rack/milestone/13) |
-| 14 | Exercise catalog quality & search | [spec](specs/spec-catalog-search.md) | [#15](https://github.com/skrischer/rack/milestone/15) |
-| 15 | Structured plan prescription & grouping | [spec](specs/spec-structured-prescription.md) | [#16](https://github.com/skrischer/rack/milestone/16) |
-| 16 | MCP authoring ergonomics & stability | [spec](specs/spec-mcp-authoring.md) | [#17](https://github.com/skrischer/rack/milestone/17) |
-| 17 | Custom / user-authored exercises | [spec](specs/spec-custom-exercises.md) | [#18](https://github.com/skrischer/rack/milestone/18) |
+| 14 | Exercise catalog quality & search | [spec](specs/archive/spec-catalog-search.md) | [#15](https://github.com/skrischer/rack/milestone/15) |
+| 15 | Structured plan prescription & grouping | [spec](specs/archive/spec-structured-prescription.md) | [#16](https://github.com/skrischer/rack/milestone/16) |
+| 16 | MCP authoring ergonomics & stability | [spec](specs/archive/spec-mcp-authoring.md) | [#17](https://github.com/skrischer/rack/milestone/17) |
+| 17 | Custom / user-authored exercises | [spec](specs/archive/spec-custom-exercises.md) | [#18](https://github.com/skrischer/rack/milestone/18) |
 
 A phase gets a Spec link once `/plan` drafts it, and a Milestone link once the
 spec is merged. The milestone (open/closed + issue progress) is where status

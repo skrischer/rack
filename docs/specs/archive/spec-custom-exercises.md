@@ -141,3 +141,9 @@ Each issue references this spec path in its body.
 - 2026-06-19: Spec-acceptance gate — `exercises` stays plain reference data (no
   source/Realtime); tool surface is `create_exercise` only. Human prerequisites:
   none. Spec accepted.
+
+## Implementation outcome (accepted 2026-06-19)
+
+Built and merged (milestone #18: #202, #203); MCP suite green.
+- #202: `exercises.user_id uuid null references auth.users on delete cascade`; distinct per-action RLS (compound public-read SELECT `user_id IS NULL OR user_id = auth.uid()` reusing the `exercises_public_read` name; owner-scoped INSERT/UPDATE/DELETE); partial index `where user_id is not null`; cross-user isolation verified.
+- #203: `create_exercise` MCP tool (in `exercises.ts`, not the source-injecting `writeTools.ts`, since `exercises` carries no `source`/`updated_at`); injects `user_id = auth.uid()` from auth (never input), `is_canonical` stays false. Custom-ness surfaced via `user_id` added to BOTH `EXERCISE_COLUMNS` and the `search_exercises` RPC `RETURNS TABLE` (kept in sync; adding the column needed DROP+CREATE of the function). FK RESTRICT refuses deleting a referenced custom. `update_exercise`/`delete_exercise` remain deferred.
