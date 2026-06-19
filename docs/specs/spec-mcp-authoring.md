@@ -38,6 +38,10 @@ is the spec merged on the default branch with a milestone and issues.
   is declared `SECURITY INVOKER` (runs as the `authenticated` role, does **not**
   escalate); it must **not** be `SECURITY DEFINER`/`SET ROLE`. The whole nested
   input is Zod-validated at the MCP boundary before the RPC runs.
+- A `create_plan_day` MCP write tool (same transactional RPC pattern): appends
+  one day plus its exercises to an existing plan (`planId`) without rewriting the
+  whole tree. Shares the day/exercise input shape and Zod validation with
+  `create_plan`.
 - Tool annotations + descriptions: `readOnlyHint: true` on `ping`, `list_plans`,
   `get_plan`, `search_exercises`, and the set-log reads; structured descriptions
   across the surface.
@@ -55,8 +59,9 @@ is the spec merged on the default branch with a milestone and issues.
 - Custom / user-authored exercises — Phase 17.
 - Structured prescription columns themselves — Phase 15 (this phase writes them).
 - Catalog search internals — Phase 14.
-- A bulk `update_plan` / nested edit — only nested **create** is in scope; the
-  existing per-row update/delete tools remain for edits.
+- A bulk `update_plan` / nested edit — only nested **create** (`create_plan`,
+  `create_plan_day`) is in scope; the existing per-row update/delete tools remain
+  for edits.
 - Set-log bulk writes — `create_plan` covers prescription, not logged sets.
 
 ## Constraints
@@ -133,8 +138,8 @@ function). Shape:
 | `create_plan` writes plan → days → exercises only (no nested set-logs) | A plan has no per-set rows; the prescription lives on `plan_exercises` (Phase 15). Logged sets are a separate, app-written concern | 2026-06-19 |
 | Read tools gain `readOnlyHint: true` + structured descriptions; existing per-row create/update/delete tools stay | MCP spec + prior-art; the beta needed several tool-searches and missed `ping` | 2026-06-19 |
 | Phase 16 depends on Phase 15 at the issue level (the `create_plan` tree writes the typed fields), not at the milestone level — the annotation and stability work is independent and can run in parallel | Maximizes the unblocked frontier; only the `create_plan` issue carries the cross-milestone `Depends on` | 2026-06-19 |
-| OPEN — nested surface: ship only `create_plan` (whole tree), or also an incremental nested `create_plan_day` (a day + its exercises). Criterion: ship `create_plan_day` only if an MCP client must append a day to an existing plan without rewriting the full tree; otherwise defer | resolved at the spec-acceptance gate | — |
-| OPEN — §4.5 stability: investigate-and-fix within this phase, or investigate-only here and file the fix as a `track:adhoc` issue if the root cause needs hosted-infra changes | resolved at the spec-acceptance gate | — |
+| Ship both `create_plan` (whole tree) and `create_plan_day` (append a day + its exercises to an existing plan), sharing the day/exercise input shape and Zod validation | Spec-acceptance gate — incremental append is wanted without a full-tree rewrite | 2026-06-19 |
+| §4.5 is investigate-**and-fix** within this phase; only a root cause that proves hosted-infra-only falls back to a `track:adhoc` follow-up | Spec-acceptance gate — the lead hypothesis (connection handling) is fixable in the MCP | 2026-06-19 |
 
 ## Tracking
 
@@ -174,3 +179,6 @@ Each issue references this spec path in its body.
   contract, made the Phase-15 `CREATE_SHAPES` reuse/ordering explicit, refocused
   the §4.5 hypotheses on connection handling (the stateless transport has no
   held-open SSE stream), and gave OPEN-1 a decision criterion.
+- 2026-06-19: Spec-acceptance gate — ship both `create_plan` and
+  `create_plan_day`; §4.5 is investigate-and-fix in this phase. Human
+  prerequisites: none. Spec accepted.
