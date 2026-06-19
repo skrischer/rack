@@ -15,13 +15,20 @@
 
 ## Data model (seed)
 
-- `exercises` — global catalog seeded from wger (CC-BY-SA): name, muscles,
-  equipment, category, `license`, `license_author` (attribution). Public read.
+- `exercises` — global catalog seeded from wger (CC-BY-SA): name, `aliases[]`
+  (alt-names / German→English bridge), muscles, normalized `equipment`,
+  category, `license`, `license_author` (attribution). Public read, searched via
+  a `pg_trgm` trigram + full-text index (not `ilike`). A custom user exercise is
+  the same table with a non-null `user_id` (RLS owner read/write; null
+  `user_id` = public catalog).
 - `plans` — user-owned: `user_id`, name, kind, `source`, `updated_at`.
 - `plan_days` — `plan_id`, position, title, focus, tag (push/pull/legs),
   `source`.
-- `plan_exercises` — `day_id`, position, `exercise_id` → catalog, target
-  (sets×reps), rir, cue, `superset_label`, `source`.
+- `plan_exercises` — `day_id`, position, `exercise_id` → catalog, structured
+  prescription (`sets`, `rep_min`, `rep_max`, `rir_low`, `rir_high`,
+  `rest_seconds`), `cue`, explicit group binding (`superset_id` + group type),
+  `source`. (Supersedes the original free-text `target` / single `rir` /
+  `superset_label` once Phases 14–16 land.)
 - `set_logs` — history: `user_id`, `plan_exercise_id`, date, weight, `reps[]`,
   rir, `logged_at`, `source`.
 - `api_keys` — `user_id`, hashed key, name, `last_used_at`, `revoked`.
@@ -29,6 +36,15 @@
 
 Every user-owned table: RLS policy on `user_id = auth.uid()`. Every mutation
 carries `source` ('app' | 'agent') and `updated_at`.
+
+**Catalog search & authoring (target — post-beta).** Catalog search is a
+Postgres hybrid (`pg_trgm` trigram similarity + `tsvector` ranking, token-AND,
+equipment/muscle filters) replacing the literal `ilike` + alphabetical + limit
+that truncated results in the beta. Plan authoring gains a transactional nested
+create — one MCP call writing plan → days → exercises → sets — so an agent never
+hand-chains parent ids across round-trips. These are the structural changes the
+MCP beta (`beta-test-protocol.md`) motivates; until Phases 14–16 land, the
+shipped model is the original free-text prescription and single-row CRUD.
 
 ## Boundaries
 
@@ -57,6 +73,11 @@ carries `source` ('app' | 'agent') and `updated_at`.
    each write streams live into the app.
 6. Artifact generation — MCP client reads data via read tools, builds a
    visualization, optionally stores it via an artifact tool → app displays it.
+7. Nested plan authoring (target) — MCP client calls one transactional
+   `create_plan` carrying the full nested tree → server Zod-validates and writes
+   plan + days + exercises (+ sets) in a single transaction as the user
+   (`source='agent'`) → each row streams live into the app. Replaces the
+   round-trip-per-row chain the beta exercised.
 
 ## Where new code goes
 
@@ -72,3 +93,13 @@ carries `source` ('app' | 'agent') and `updated_at`.
   migration.
 - A rule both app and MCP must obey → enforce it in the database (constraint,
   RLS, or trigger), not in one client.
+
+## Known risks
+
+- **`get_plan` timeout after a write burst.** In the MCP beta, a `get_plan`
+  read issued right after a sequence of writes hung (~4 min, no response),
+  reproducibly — yet the read is only three indexed selects. This points at the
+  Streamable-HTTP session lifecycle or the per-request Supabase client /
+  connection handling, not the query. Treat as a stability investigation
+  (Phase 16, pullable as a `track:adhoc` fast-lane if it blocks usage), not a
+  query tune.

@@ -29,6 +29,11 @@
   key is the only identity source.
 - Every mutation sets `source` ('app' | 'agent') and `updated_at` so the app
   can highlight agent edits.
+- Plan prescription is structured and typed — sets, rep range, RIR range,
+  rest, and explicit exercise groups are first-class columns shared by the app
+  and the MCP; free-text prescription is never the source of truth.
+- An MCP client can author a whole multi-row structure (a full plan) in one
+  transactional call; no caller hand-chains parent ids across round-trips.
 - TypeScript strict, no `any`; every MCP tool input is Zod-validated.
 - Android: no business logic in Composables; UI state via ViewModel +
   StateFlow; all Supabase access behind a repository layer.

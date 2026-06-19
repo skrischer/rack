@@ -24,6 +24,9 @@
 | 11 | Overviews & dashboards | [spec](specs/spec-dashboards.md) | [#11](https://github.com/skrischer/rack/milestone/11) |
 | 12 | Settings & units | [spec](specs/spec-settings.md) | [#12](https://github.com/skrischer/rack/milestone/12) |
 | 13 | Plate calculator & 1RM estimates | [spec](specs/spec-plate-calc-1rm.md) | [#13](https://github.com/skrischer/rack/milestone/13) |
+| 14 | Exercise catalog quality & search | — | — |
+| 15 | Structured plan prescription & grouping | — | — |
+| 16 | MCP authoring ergonomics & stability | — | — |
 
 A phase gets a Spec link once `/plan` drafts it, and a Milestone link once the
 spec is merged. The milestone (open/closed + issue progress) is where status
@@ -75,6 +78,33 @@ re-prioritize):
   and profile. Depends on Phase 3.
 - **13 — Plate calculator & 1RM estimates.** A barbell plate calculator per
   target weight and a 1RM estimate from load × reps. Depends on Phase 3.
+
+Beta-test hardening (from `beta-test-protocol.md`, 2026-06-19 — the MCP beta run
+against the shipped server; see the prior-art harvest and the architecture
+deltas). These fold the lived-experience gaps back into the queue:
+
+- **14 — Exercise catalog quality & search.** Curate the wger seed (canonical
+  base entries, `aliases[]` for German→English and variant naming, a normalized
+  equipment vocabulary incl. Cable/Machine, drop non-English/junk rows); rebuild
+  `search_exercises` as a Postgres hybrid (`pg_trgm` trigram + `tsvector`
+  ranking, token-AND multi-word, equipment/muscle filters, canonical-first) —
+  optionally a `resolve_exercise` name→best-match helper. Addresses beta §4.1,
+  §4.6. Depends on Phase 1 (catalog/seed) and Phase 2 (MCP search tool).
+- **15 — Structured plan prescription & grouping.** Migrate `plan_exercises` to
+  typed fields (`sets`, `rep_min`, `rep_max`, `rir_low`, `rir_high`,
+  `rest_seconds`), replace the implicit `superset_label` with an explicit
+  `superset_id` + group type (superset / circuit) + group rest, and add custom
+  user exercises (`is_custom` / non-null `user_id`, RLS) so a plan can reference
+  an exercise absent from the catalog. App + MCP + migrations move together.
+  Addresses beta §4.2. Depends on Phases 1, 2, 3; ripples into the Recomp UX
+  Overhaul living-spec (set-table rendering) and the session player.
+- **16 — MCP authoring ergonomics & stability.** A transactional nested
+  `create_plan` (plan → days → exercises → sets in one validated call), tool
+  annotations + structured descriptions for one-step discovery, and the
+  `get_plan`-after-writes stability investigation. Addresses beta §4.3, §4.4,
+  §4.5. Depends on Phase 2; the nested create writes the Phase 15 structured
+  fields, so plan 15 before 16. The stability fix is independent and may be
+  pulled forward as a `track:adhoc` fast-lane issue.
 
 ## Living-spec themes
 

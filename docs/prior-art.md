@@ -179,3 +179,89 @@
 - Notes:
   - ADOPT: bottom-tab **quick-nav** for 3–5 frequent destinations with an overflow for the rest (Material-aligned); the per-exercise **set table** (`set | previous | kg | reps | ✓`) with a previous-performance column and a per-set check that auto-starts the rest timer; a **launcher** home (today/next-workout + a single Start CTA) that separates plan-overview from active-session logging.
   - AVOID: a left burger-drawer as primary navigation (off-pattern for modern fitness apps); cramming always-open per-set inputs into the plan overview (the old `artifact.html` model); feature bloat (social feeds, marketplace).
+
+## Programmable plan authoring — nested / transactional write (the bulk-authoring concern)
+
+> Surfaced by the MCP beta test (`beta-test-protocol.md` §4.3): authoring a
+> 5-day / 31-exercise plan meant one `create_*` round-trip per row plus a
+> sequential `planId → dayId → exerciseId` ID chain. Hevy already solved the
+> shape.
+
+### Hevy public API & chrisdoc/hevy-mcp
+
+- Path: https://github.com/chrisdoc/hevy-mcp (`openapi-spec.json`); Hevy public REST API
+- License: code MIT (hevy-mcp); Hevy app/API closed, commercial
+- Verdict: reference-only — adopt the nested-write *shape*, never a runtime dependency on a closed competitor's API.
+- Date: 2026-06-19
+- Notes:
+  - ADOPT: a single `create-routine` call carrying the **full nested tree** — `title` + `exercises[]` (each `exercise_template_id`, nullable `superset_id`, `rest_seconds`, `notes`) + nested `sets[]` (`type`, `weight_kg`, `reps`, `rep_range {start,end}`, `rpe`). This collapses Rack's sequential round-trip chain into one transactional write — the direct fix for the beta's authoring friction. Also: a dedicated `search-exercise-templates` tool distinct from list, and an in-memory exercise-template cache.
+  - AVOID: Hevy's "fragile, silent-failure" set-type/wrapper conventions (a wrong field is silently dropped) — Rack's Zod boundary must fail **loudly** with a specific message. Also avoid Hevy's exercise-template create-only limitation (no edit/delete via API).
+
+## Structured set prescription — rep range, effort (RIR/RPE), rest
+
+> Surfaced by the beta (§4.2): `target` was unstructured free text (`3 × 6–8`)
+> and `rir` a single integer, so planned rep- and RIR-*ranges* could not be
+> stored as evaluable fields.
+
+### Hevy set model + RIR/RPE practice (Fitbod, TrainingPeaks, N1 Training)
+
+- Path: Hevy `openapi-spec.json` set object; https://fitbod.zendesk.com (RiR), https://help.trainingpeaks.com (programming rest/RPE/rep-range/tempo/RIR), https://n1.training/effort-estimation-rpe-vs-rir/
+- License: n/a (API shape + domain practice)
+- Verdict: reference — implement the typed fields directly; no dependency.
+- Date: 2026-06-19
+- Notes:
+  - ADOPT: `rep_range {start, end}` as the structured target instead of a string; per-exercise `rest_seconds`; effort as a typed field. For Rack's RIR-range requirement, model `rir_low`/`rir_high` (RPE↔RIR is well defined — RPE 7≈3 RIR, 8≈2, 9≈1 — so an RPE-only model like Hevy's loses the range Rack needs). TrainingPeaks treats rest, RPE, rep-range, tempo and RIR as first-class per-set fields — the target completeness bar.
+  - ADOPT (research): in a superset/circuit the effort/RIR prompt belongs **after** all member sets complete; between-exercise rest in supersets is 0–60 s.
+  - AVOID: shipping Hevy's full set-type richness (`warmup`/`normal`/`failure`/`dropset`) up front — start with range + rest + effort; add set types behind a scope flag only when a real plan needs them.
+
+## Superset / circuit grouping — explicit
+
+> Surfaced by the beta (§4.2): grouping was carried only by a shared
+> `superset_label` string; superset-vs-circuit and a group rest were not
+> expressible.
+
+### Hevy `superset_id`
+
+- Path: Hevy `openapi-spec.json` exercise object (`superset_id`: integer, nullable)
+- License: n/a (API shape)
+- Verdict: reference — adopt the explicit-group model.
+- Date: 2026-06-19
+- Notes:
+  - ADOPT: an explicit numeric group id on the exercise (Hevy's `superset_id`) to bind members, extended for Rack with a group **type** (superset vs circuit) and a group-level **rest** — replacing the implicit shared-label string that could express neither.
+  - AVOID: inferring group kind from member count (the beta's implicit model); make type explicit.
+
+## Exercise catalog — search relevance, filters, aliases, custom exercises
+
+> Surfaced by the beta (§4.1, §4.6): `search_exercises` ran literal
+> `ilike '%q%'` + alphabetical order + `limit`, so multi-word queries returned
+> nothing, relevant rows were truncated, equipment variants (Cable/Machine)
+> were unreachable, and the German plan could not be matched to the
+> English-only catalog.
+
+### Strong / Hevy / Exercise.com / WorkoutX / FitPros (search UX) + yuhonas/free-exercise-db (schema) + Postgres pg_trgm + FTS
+
+- Path: https://www.exercise.com/support/search-app-exercise-database/, https://workoutxapp.com/blog/top-10-exercise-databases-fitness-apps.html, https://github.com/yuhonas/free-exercise-db; pg_trgm / `tsvector` docs
+- License: search patterns n/a; free-exercise-db data Unlicense (images unresolved — see Phase 7 entry)
+- Verdict: reference (patterns) / reuse (free-exercise-db aliases & coverage, data only)
+- Date: 2026-06-19
+- Notes:
+  - ADOPT: instant search **filterable by muscle group + equipment + movement pattern** is table-stakes across the field (Exercise.com, WorkoutX, FitPros) — `search_exercises` must gain equipment/muscle filters, not only `category`. Per-exercise **aliases / alt-names** (free-exercise-db schema) to bridge German→English and variant naming. An **`is_custom`** user-created exercise (Hevy templates) so a plan can reference an exercise absent from the canonical catalog — removes the beta's "must substitute a variant" workaround.
+  - ADOPT: Postgres **hybrid search** — `pg_trgm` GIN trigram similarity (typo/partial/fuzzy) combined with full-text `tsvector` ranking, with **token-AND** so `shoulder press dumbbell` matches — replacing literal substring + alphabetical + limit. Return canonical/most-relevant first.
+  - ADOPT: catalog **curation** — normalize the equipment vocabulary (the wger seed has no clean `Cable`/`Machine` values; they live inside exercise names), mark canonical base exercises (`Lateral Raise`, `Lat Pulldown`, `Triceps Pushdown`), and filter non-English / junk rows (`lento avanti seduto`).
+  - AVOID: a runtime dependency on a third-party search API — search stays in Postgres over the owned, seeded catalog.
+
+## MCP tool-surface ergonomics & discovery
+
+> Surfaced by the beta (§4.4): the rack tools were not immediately usable —
+> several client tool-searches were needed to assemble the working set, and
+> `ping` (which exists on the server) was never surfaced.
+
+### MCP spec tool annotations + AWS / Apigene tool-design guidance
+
+- Path: https://modelcontextprotocol.io/specification/2025-06-18/server/tools, https://docs.aws.amazon.com/prescriptive-guidance/latest/mcp-strategies/mcp-tool-strategy.html, https://apigene.ai/blog/mcp-tools
+- License: spec / guidance
+- Verdict: reference — informs the tool-surface polish.
+- Date: 2026-06-19
+- Notes:
+  - ADOPT: **annotate every tool** (`readOnlyHint` on the read tools, idempotency hints where true); **structured descriptions** (one-line purpose + exact parameter constraints + output shape) so a client's tool-search resolves the right tools in one step; keep the surface balanced and well-named. Consider richer descriptions / a small index so discovery is not a multi-search hunt.
+  - AVOID: over-fine granularity that explodes the tool count and confuses selection, and over-coarse tools that hide capability — Hevy-mcp's ~30 grouped tools is a sane ceiling.
