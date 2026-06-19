@@ -12,6 +12,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { AuthContext } from '../auth.js';
 import { registerArtifactTools } from './artifacts.js';
+import { registerCreatePlanTools } from './createPlan.js';
 import { registerExerciseTools } from './exercises.js';
 import { registerPlanTools } from './plans.js';
 import { registerSetLogTools } from './setLogs.js';
@@ -28,5 +29,6 @@ export function registerReadTools(server: McpServer, auth: AuthContext): void {
 export function registerTools(server: McpServer, auth: AuthContext): void {
   registerReadTools(server, auth);
   registerWriteTools(server, auth);
+  registerCreatePlanTools(server, auth);
   registerArtifactTools(server, auth);
 }
