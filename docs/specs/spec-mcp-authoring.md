@@ -29,18 +29,23 @@ is the spec merged on the default branch with a milestone and issues.
 
 ### In scope
 
-- A `create_plan` MCP write tool backed by a `SECURITY INVOKER` plpgsql function
-  called via `supabase.rpc()`: it inserts the plan, its days, and each day's
-  exercises (the Phase 15 typed prescription + grouping) in one transaction,
-  running as the resolved user so RLS applies; the whole nested input is
-  Zod-validated at the MCP boundary and every row is written `source='agent'`.
+- A `create_plan` MCP write tool backed by a plpgsql function (one `jsonb`
+  argument) called via the user-scoped `auth.supabase.rpc('create_plan', …)`: it
+  inserts the plan, its days, and each day's exercises (the Phase 15 typed
+  prescription + grouping) in one transaction and writes every row
+  `source='agent'`. RLS applies because the user-scoped client sends the user's
+  JWT to PostgREST, which sets `auth.uid()` for the function body — the function
+  is declared `SECURITY INVOKER` (runs as the `authenticated` role, does **not**
+  escalate); it must **not** be `SECURITY DEFINER`/`SET ROLE`. The whole nested
+  input is Zod-validated at the MCP boundary before the RPC runs.
 - Tool annotations + descriptions: `readOnlyHint: true` on `ping`, `list_plans`,
   `get_plan`, `search_exercises`, and the set-log reads; structured descriptions
   across the surface.
-- Diagnose and fix the `get_plan`-after-writes hang (beta §4.5). Candidate
-  hypotheses to start from: a stateless-mode SSE GET stream held open with no
-  session/messages; per-request Supabase-client / connection handling under a
-  write burst.
+- Diagnose and fix the `get_plan`-after-writes hang (beta §4.5). Lead hypothesis:
+  per-request Supabase-client / connection handling under a write burst (the hang
+  appears *after* writes, not during). Note the transport is fully stateless
+  (`http.ts` `sessionIdGenerator: undefined`), so there is **no** held-open SSE
+  GET stream to blame — do not chase that first.
 - Tests: `create_plan` happy-path + atomicity (mid-tree failure rolls back);
   annotation presence; a regression test for the read-after-writes path if the
   root cause is reproducible in the suite.
@@ -68,6 +73,40 @@ is the spec merged on the default branch with a milestone and issues.
 - Annotations use the MCP SDK `registerTool` annotation field; descriptions
   follow the prior-art structure (one-line purpose + param constraints + output).
 
+## `create_plan` input contract
+
+Validated by Zod at the boundary, passed to the RPC as one `jsonb` argument
+(camelCase at the MCP boundary, mapped to `snake_case` columns inside the
+function). Shape:
+
+```
+{
+  name: string, kind?: string,
+  days: [{
+    position: int, title?: string, focus?: string, tag?: string,
+    exercises: [{
+      exerciseId: uuid, position: int,
+      sets?, repMin?, repMax?, rirLow?, rirHigh?, restSeconds?, cue?,
+      supersetId?: int,            // per-day-local group key (Phase 15 semantics); null = ungrouped
+      groupType?: 'superset'|'circuit'
+    }]
+  }]
+}
+```
+
+- Grouping is signalled by the caller pre-assigning a per-day-local `supersetId`
+  (a small integer, null = ungrouped) plus `groupType` on each grouped exercise —
+  the same per-day numeric key Phase 15 defines, not a global id.
+- The exercise fields reuse the Phase-15-rewritten `CREATE_SHAPES.plan_exercises`
+  Zod shape (typed fields), so this tool **must** follow the Phase 15
+  migration+MCP work (issue-level `Depends on`); it must not reintroduce the
+  dropped legacy `target`/`rir`/`superset_label` fields.
+- Returns the created plan's id plus created day/exercise counts; the client
+  reads the full tree back via `get_plan`.
+- On any failure (Zod, FK on `exerciseId`, a DB CHECK such as `rep_min > rep_max`,
+  or RLS) the transaction rolls back entirely and the tool surfaces a specific,
+  loud error string (constitution: fail loudly, not Hevy's silent drop).
+
 ## Prior art
 
 - [Programmable plan authoring — nested / transactional write (the bulk-authoring concern)](../prior-art.md#programmable-plan-authoring--nested--transactional-write-the-bulk-authoring-concern)
@@ -87,12 +126,14 @@ is the spec merged on the default branch with a milestone and issues.
 
 | Decision | Rationale | Date |
 |---|---|---|
-| `create_plan` is backed by a `SECURITY INVOKER` plpgsql function called via `supabase.rpc()` | Gives one-transaction atomicity while still running as the resolved user so RLS applies — no service-role path (constitution); prior-art Hevy nested create | 2026-06-19 |
+| `create_plan` is a plpgsql function (one `jsonb` arg) called via the user-scoped `auth.supabase.rpc()`; RLS applies because PostgREST sets `auth.uid()` from the user JWT on that call, not because of the function's security attribute. The function is `SECURITY INVOKER` (runs as `authenticated`, no escalation) — explicitly **not** `SECURITY DEFINER`/`SET ROLE` | One-transaction atomicity with no service-role path (constitution); prior-art Hevy nested create. Correct causal model so no one passes a token into the body or escalates the function | 2026-06-19 |
+| `create_plan` input shape is the contract in "`create_plan` input contract"; grouping via a caller-assigned per-day-local `supersetId` + `groupType` | Removes the day-one ambiguity over the nested shape and how supersets are signalled | 2026-06-19 |
+| Any failure rolls the whole transaction back; the tool returns a specific, loud error string | Constitution: fail loudly; an agent needs an actionable message, not a silent partial write | 2026-06-19 |
+| `create_plan` reuses the Phase-15-rewritten `CREATE_SHAPES.plan_exercises` Zod shape; `writeTools.ts` arrives already typed-only from Phase 15 and must not regress the legacy columns | Shared validation, no drift; makes the cross-issue ordering load-bearing and explicit | 2026-06-19 |
 | `create_plan` writes plan → days → exercises only (no nested set-logs) | A plan has no per-set rows; the prescription lives on `plan_exercises` (Phase 15). Logged sets are a separate, app-written concern | 2026-06-19 |
-| The whole nested input is Zod-validated at the boundary (incl. Phase 15 range invariants) before the RPC runs | Constitution: strict boundary validation; fail loudly, not Hevy's silent-drop | 2026-06-19 |
 | Read tools gain `readOnlyHint: true` + structured descriptions; existing per-row create/update/delete tools stay | MCP spec + prior-art; the beta needed several tool-searches and missed `ping` | 2026-06-19 |
 | Phase 16 depends on Phase 15 at the issue level (the `create_plan` tree writes the typed fields), not at the milestone level — the annotation and stability work is independent and can run in parallel | Maximizes the unblocked frontier; only the `create_plan` issue carries the cross-milestone `Depends on` | 2026-06-19 |
-| OPEN — nested surface: ship only `create_plan` (whole tree), or also an incremental nested `create_plan_day` (a day + its exercises) for appending to an existing plan | resolved at the spec-acceptance gate | — |
+| OPEN — nested surface: ship only `create_plan` (whole tree), or also an incremental nested `create_plan_day` (a day + its exercises). Criterion: ship `create_plan_day` only if an MCP client must append a day to an existing plan without rewriting the full tree; otherwise defer | resolved at the spec-acceptance gate | — |
 | OPEN — §4.5 stability: investigate-and-fix within this phase, or investigate-only here and file the fix as a `track:adhoc` issue if the root cause needs hosted-infra changes | resolved at the spec-acceptance gate | — |
 
 ## Tracking
@@ -127,3 +168,9 @@ Each issue references this spec path in its body.
 ## Decision log
 
 - 2026-06-19: Spec drafted from the beta-test findings and the prior-art harvest.
+- 2026-06-19: Review (REQUEST_CHANGES) addressed — corrected the RLS causal model
+  (user JWT on the PostgREST call, not `SECURITY INVOKER`), added the explicit
+  `create_plan` input contract + per-day `supersetId` grouping + rollback/error
+  contract, made the Phase-15 `CREATE_SHAPES` reuse/ordering explicit, refocused
+  the §4.5 hypotheses on connection handling (the stateless transport has no
+  held-open SSE stream), and gave OPEN-1 a decision criterion.
