@@ -1,5 +1,6 @@
 package de.rack.app.ui.plan
 
+import de.rack.app.domain.GroupType
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
 import de.rack.app.ui.theme.SupersetKind
@@ -16,15 +17,15 @@ import kotlin.test.assertNull
  */
 class PlanGroupingTest {
     @Test
-    fun `consecutive equal labels group into one superset or circuit run`() {
+    fun `consecutive equal group ids group into one superset or circuit run`() {
         val exercises =
             listOf(
-                exercise("a", label = null),
-                exercise("b", label = "S1"),
-                exercise("c", label = "S1"),
-                exercise("d", label = "C1"),
-                exercise("e", label = "C1"),
-                exercise("f", label = "C1"),
+                exercise("a"),
+                exercise("b", supersetId = 1, groupType = GroupType.SUPERSET),
+                exercise("c", supersetId = 1, groupType = GroupType.SUPERSET),
+                exercise("d", supersetId = 2, groupType = GroupType.CIRCUIT),
+                exercise("e", supersetId = 2, groupType = GroupType.CIRCUIT),
+                exercise("f", supersetId = 2, groupType = GroupType.CIRCUIT),
             )
 
         val groups = groupExercises(exercises)
@@ -37,8 +38,12 @@ class PlanGroupingTest {
     fun `finding a logged exercise returns its run and index across days`() {
         val days =
             listOf(
-                day("d1", exercise("a", label = "S1"), exercise("b", label = "S1")),
-                day("d2", exercise("c", label = null)),
+                day(
+                    "d1",
+                    exercise("a", supersetId = 1, groupType = GroupType.SUPERSET),
+                    exercise("b", supersetId = 1, groupType = GroupType.SUPERSET),
+                ),
+                day("d2", exercise("c")),
             )
 
         val context = findLoggedExerciseContext(days, "b")
@@ -49,7 +54,7 @@ class PlanGroupingTest {
 
     @Test
     fun `finding an off-screen exercise returns null`() {
-        val days = listOf(day("d1", exercise("a", label = null)))
+        val days = listOf(day("d1", exercise("a")))
 
         assertNull(findLoggedExerciseContext(days, "missing"))
     }
@@ -64,7 +69,8 @@ class PlanGroupingTest {
 
     private fun exercise(
         id: String,
-        label: String?,
+        supersetId: Int? = null,
+        groupType: GroupType? = null,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -72,9 +78,14 @@ class PlanGroupingTest {
         name = id,
         category = null,
         position = 0,
-        target = null,
-        rir = null,
+        sets = null,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = label,
+        supersetId = supersetId,
+        groupType = groupType,
     )
 }

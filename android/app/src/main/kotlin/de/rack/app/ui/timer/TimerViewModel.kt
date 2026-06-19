@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import de.rack.app.data.TimerController
 import de.rack.app.domain.ExerciseType
+import de.rack.app.domain.GroupRotation
 import de.rack.app.domain.resolveGroupRotation
 import de.rack.app.domain.resolveRestSeconds
 import de.rack.app.domain.restSecondsFor
@@ -63,8 +64,8 @@ class TimerViewModel(
         context: LoggedExerciseContext,
     ) {
         if (!controller.isSessionActive.value) startSession()
-        val seconds = resolveRestSeconds(category, context.group.size)
-        controller.startRest(seconds, rotationFor(context))
+        val rotation = resolveGroupRotation(context.group, context.index)
+        controller.startRest(resolveRestSeconds(category, rotation.role), rotationFor(rotation))
     }
 
     /**
@@ -80,13 +81,12 @@ class TimerViewModel(
         context: LoggedExerciseContext,
     ) {
         if (!controller.isSessionActive.value) startSession()
-        val seconds = restSecondsFor(type, context.group.size)
-        controller.startRest(seconds, rotationFor(context))
+        val rotation = resolveGroupRotation(context.group, context.index)
+        controller.startRest(restSecondsFor(type, rotation.role), rotationFor(rotation))
     }
 
-    /** Build the in-app rotation cue from [context], or null for a standalone exercise. */
-    private fun rotationFor(context: LoggedExerciseContext): RotationUiState? {
-        val rotation = resolveGroupRotation(context.group, context.index)
+    /** Build the in-app rotation cue from a resolved [rotation], or null for a standalone exercise. */
+    private fun rotationFor(rotation: GroupRotation): RotationUiState? {
         val next = rotation.next.takeIf { rotation.role != SupersetKind.NONE } ?: return null
         return RotationUiState(kind = rotation.role, nextExerciseName = next.name)
     }

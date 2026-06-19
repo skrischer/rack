@@ -123,20 +123,10 @@ private fun ExerciseCardHead(block: SessionExerciseBlock) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = block.name, style = type.exerciseName, color = colors.txt, modifier = Modifier.weight(1f))
-        block.targetLabel()?.let { label ->
+        block.prescription?.let { label ->
             Text(text = "  $label", style = type.loadValue, color = colors.dim)
         }
     }
-}
-
-/** "4 × 5-8 · RIR 1" from the block's plan target and target RIR, or null when both absent. */
-private fun SessionExerciseBlock.targetLabel(): String? {
-    val parts =
-        buildList {
-            target?.takeIf { it.isNotBlank() }?.let { add(it) }
-            rir?.let { add("RIR $it") }
-        }
-    return parts.joinToString(separator = " · ").ifBlank { null }
 }
 
 private fun setRows(

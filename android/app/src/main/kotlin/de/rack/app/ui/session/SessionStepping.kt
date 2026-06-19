@@ -1,6 +1,7 @@
 package de.rack.app.ui.session
 
 import de.rack.app.domain.PlanExercise
+import de.rack.app.ui.logging.prescriptionLabel
 import de.rack.app.ui.logging.setCount
 import de.rack.app.ui.plan.ExerciseGroup
 import de.rack.app.ui.plan.groupExercises
@@ -9,7 +10,7 @@ import de.rack.app.ui.theme.SupersetKind
 /**
  * Turns a plan day's position-ordered [exercises] into the ordered step sequence
  * the player walks through. Non-superset exercises step straight through all their
- * sets before the next exercise; a `superset_label` group rotates set-by-set
+ * sets before the next exercise; a `superset_id` group rotates set-by-set
  * (set 1 of every member, then set 2 of every member, ...). Uneven set counts skip
  * an exhausted member in that and later rounds while the others keep rotating, so a
  * 4x5 next to a 3x8 finishes the 4th set of the first member alone.
@@ -18,20 +19,19 @@ fun buildSessionSteps(exercises: List<PlanExercise>): List<SessionStep> =
     groupExercises(exercises).flatMap(::stepsForGroup)
 
 /**
- * One exercise card in the set-table session view: the exercise's [name], read-only plan
- * [target] / [rir] / [cue], its set count, and its superset/circuit [kind]. [groupStart]
- * marks the first member of a `superset_label` run so the screen draws the group header
- * once above it. Static for the session (derived from the position-ordered exercises); the
- * live kg/RIR/reps and ticked state are held per `plan_exercise_id` in the ViewModel.
+ * One exercise card in the set-table session view: the exercise's [name], its
+ * one-line plan [prescription] label (rep range / RIR range / rest), its set count,
+ * and its superset/circuit [kind]. [groupStart] marks the first member of a
+ * `superset_id` run so the screen draws the group header once above it. Static for the
+ * session (derived from the position-ordered exercises); the live kg/RIR/reps and
+ * ticked state are held per `plan_exercise_id` in the ViewModel.
  */
 data class SessionExerciseBlock(
     val planExerciseId: String,
     val name: String,
     val kind: SupersetKind,
     val setCount: Int,
-    val target: String? = null,
-    val rir: Int? = null,
-    val cue: String? = null,
+    val prescription: String? = null,
     val groupStart: Boolean = false,
 )
 
@@ -48,17 +48,15 @@ fun buildExerciseBlocks(exercises: List<PlanExercise>): List<SessionExerciseBloc
                 planExerciseId = exercise.id,
                 name = exercise.name,
                 kind = group.kind,
-                setCount = setCount(exercise.target),
-                target = exercise.target,
-                rir = exercise.rir,
-                cue = exercise.cue,
+                setCount = setCount(exercise.sets),
+                prescription = prescriptionLabel(exercise),
                 groupStart = group.kind != SupersetKind.NONE && index == 0,
             )
         }
     }
 
 private fun stepsForGroup(group: ExerciseGroup): List<SessionStep> {
-    val members = group.exercises.map { it to setCount(it.target) }
+    val members = group.exercises.map { it to setCount(it.sets) }
     return when (group.kind) {
         SupersetKind.NONE -> straightSteps(group.kind, members)
         SupersetKind.SUPERSET, SupersetKind.CIRCUIT -> rotatedSteps(group.kind, members)
@@ -105,7 +103,4 @@ private fun step(
         kind = kind,
         setIndex = setIndex,
         totalSets = totalSets,
-        target = exercise.target,
-        rir = exercise.rir,
-        cue = exercise.cue,
     )

@@ -72,7 +72,7 @@ private fun summaryLine(
         planExerciseId = exercise.id,
         name = exercise.name,
         setsDone = reps.size,
-        targetSets = setCount(exercise.target),
+        targetSets = setCount(exercise.sets),
         volume = (weightKg ?: 0.0) * reps.sum(),
     )
 }

@@ -6,29 +6,29 @@ import de.rack.app.ui.theme.supersetKind
 
 /**
  * Groups [exercises] (already in `position` order) into [ExerciseGroup]s by
- * scanning consecutive equal `superset_label` values. Exercises without a label,
- * or whose label does not match its neighbours, are emitted as standalone
- * [SupersetKind.NONE] groups; a run of equal labels becomes a single grouped
- * entry classified by [supersetKind].
+ * scanning consecutive equal `superset_id` values. Exercises without a group id,
+ * or whose id does not match its neighbours, are emitted as standalone
+ * [SupersetKind.NONE] groups; a run of equal ids becomes a single grouped entry
+ * classified by [supersetKind] from its members' `group_type`.
  */
 fun groupExercises(exercises: List<PlanExercise>): List<ExerciseGroup> {
     val groups = mutableListOf<ExerciseGroup>()
     var index = 0
     while (index < exercises.size) {
         val current = exercises[index]
-        val label = current.supersetLabel?.takeIf { it.isNotBlank() }
-        if (label == null) {
+        val groupId = current.supersetId
+        if (groupId == null) {
             groups += ExerciseGroup(SupersetKind.NONE, listOf(current))
             index++
             continue
         }
         var end = index + 1
-        while (end < exercises.size && exercises[end].supersetLabel?.takeIf { it.isNotBlank() } == label) {
+        while (end < exercises.size && exercises[end].supersetId == groupId) {
             end++
         }
-        val run = exercises.subList(index, end)
-        val kind = supersetKind(run.size)
-        groups += ExerciseGroup(kind, run.toList())
+        val run = exercises.subList(index, end).toList()
+        val kind = supersetKind(current.groupType, run.size)
+        groups += ExerciseGroup(kind, run)
         index = end
     }
     return groups

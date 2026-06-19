@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 /**
  * One renderable entry in a day's exercise list: a group of consecutive
  * exercises that either stand alone ([SupersetKind.NONE]) or share a
- * `superset_label` ([SupersetKind.SUPERSET] / [SupersetKind.CIRCUIT]). Derived
+ * `superset_id` ([SupersetKind.SUPERSET] / [SupersetKind.CIRCUIT]). Derived
  * client-side from the position-ordered exercises (it is not stored).
  */
 data class ExerciseGroup(
@@ -40,7 +40,7 @@ data class DayContent(
 
 /**
  * The grouping context of one logged plan-exercise: its enclosing superset/circuit
- * [group] (the consecutive `superset_label` run, or a singleton) and its [index]
+ * [group] (the consecutive `superset_id` run, or a singleton) and its [index]
  * within that group. Used to resolve the rest default and the rotation cue on a
  * logged set (docs/specs/spec-timers.md) without re-deriving the grouping in the UI.
  */

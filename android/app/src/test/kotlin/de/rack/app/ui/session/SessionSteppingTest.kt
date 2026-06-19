@@ -1,5 +1,6 @@
 package de.rack.app.ui.session
 
+import de.rack.app.domain.GroupType
 import de.rack.app.domain.PlanExercise
 import de.rack.app.ui.theme.SupersetKind
 import org.junit.Test
@@ -8,8 +9,8 @@ import kotlin.test.assertEquals
 /**
  * Covers the pure step-sequence model that drives the guided session player
  * (docs/specs/spec-session-player.md): [buildSessionSteps] orders sets within an
- * exercise and rotates set-by-set within a `superset_label` group, skipping
- * exhausted members on uneven set counts. Each step is identified here by
+ * exercise and rotates set-by-set within a `superset_id` group, skipping exhausted
+ * members on uneven set counts. Each step is identified here by
  * "<exercise>#<setIndex>" for a readable order assertion.
  */
 class SessionSteppingTest {
@@ -18,8 +19,8 @@ class SessionSteppingTest {
         val steps =
             buildSessionSteps(
                 listOf(
-                    exercise("a", target = "2 x 5", label = null),
-                    exercise("b", target = "3 x 8", label = null),
+                    exercise("a", sets = 2),
+                    exercise("b", sets = 3),
                 ),
             )
 
@@ -32,8 +33,8 @@ class SessionSteppingTest {
         val steps =
             buildSessionSteps(
                 listOf(
-                    exercise("a", target = "3 x 10", label = "S1"),
-                    exercise("b", target = "3 x 10", label = "S1"),
+                    exercise("a", sets = 3, supersetId = 1, groupType = GroupType.SUPERSET),
+                    exercise("b", sets = 3, supersetId = 1, groupType = GroupType.SUPERSET),
                 ),
             )
 
@@ -46,9 +47,9 @@ class SessionSteppingTest {
         val steps =
             buildSessionSteps(
                 listOf(
-                    exercise("a", target = "2 x 12", label = "C1"),
-                    exercise("b", target = "2 x 12", label = "C1"),
-                    exercise("c", target = "2 x 12", label = "C1"),
+                    exercise("a", sets = 2, supersetId = 1, groupType = GroupType.CIRCUIT),
+                    exercise("b", sets = 2, supersetId = 1, groupType = GroupType.CIRCUIT),
+                    exercise("c", sets = 2, supersetId = 1, groupType = GroupType.CIRCUIT),
                 ),
             )
 
@@ -61,8 +62,8 @@ class SessionSteppingTest {
         val steps =
             buildSessionSteps(
                 listOf(
-                    exercise("a", target = "4 x 5", label = "S1"),
-                    exercise("b", target = "3 x 8", label = "S1"),
+                    exercise("a", sets = 4, supersetId = 1, groupType = GroupType.SUPERSET),
+                    exercise("b", sets = 3, supersetId = 1, groupType = GroupType.SUPERSET),
                 ),
             )
 
@@ -75,9 +76,9 @@ class SessionSteppingTest {
         val blocks =
             buildExerciseBlocks(
                 listOf(
-                    exercise("a", target = "3 x 8", label = null),
-                    exercise("b", target = "2 x 12", label = "S1"),
-                    exercise("c", target = "2 x 12", label = "S1"),
+                    exercise("a", sets = 3),
+                    exercise("b", sets = 2, supersetId = 1, groupType = GroupType.SUPERSET),
+                    exercise("c", sets = 2, supersetId = 1, groupType = GroupType.SUPERSET),
                 ),
             )
 
@@ -93,8 +94,9 @@ class SessionSteppingTest {
 
     private fun exercise(
         id: String,
-        target: String?,
-        label: String?,
+        sets: Int?,
+        supersetId: Int? = null,
+        groupType: GroupType? = null,
     ) = PlanExercise(
         id = id,
         dayId = "d",
@@ -102,9 +104,14 @@ class SessionSteppingTest {
         name = id,
         category = null,
         position = 0,
-        target = target,
-        rir = null,
+        sets = sets,
+        repMin = null,
+        repMax = null,
+        rirLow = null,
+        rirHigh = null,
+        restSeconds = null,
         cue = null,
-        supersetLabel = label,
+        supersetId = supersetId,
+        groupType = groupType,
     )
 }

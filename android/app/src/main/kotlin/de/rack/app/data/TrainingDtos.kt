@@ -1,5 +1,6 @@
 package de.rack.app.data
 
+import de.rack.app.domain.GroupType
 import de.rack.app.domain.Plan
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
@@ -42,10 +43,15 @@ internal data class PlanExerciseDto(
     @SerialName("day_id") val dayId: String,
     @SerialName("exercise_id") val exerciseId: String,
     val position: Int,
-    val target: String? = null,
-    val rir: Int? = null,
+    val sets: Int? = null,
+    @SerialName("rep_min") val repMin: Int? = null,
+    @SerialName("rep_max") val repMax: Int? = null,
+    @SerialName("rir_low") val rirLow: Int? = null,
+    @SerialName("rir_high") val rirHigh: Int? = null,
+    @SerialName("rest_seconds") val restSeconds: Int? = null,
     val cue: String? = null,
-    @SerialName("superset_label") val supersetLabel: String? = null,
+    @SerialName("superset_id") val supersetId: Int? = null,
+    @SerialName("group_type") val groupType: String? = null,
     val exercises: ExerciseCatalogDto? = null,
 ) {
     fun toDomain(): PlanExercise =
@@ -56,13 +62,26 @@ internal data class PlanExerciseDto(
             name = exercises?.name.orEmpty(),
             category = exercises?.category,
             position = position,
-            target = target,
-            rir = rir,
+            sets = sets,
+            repMin = repMin,
+            repMax = repMax,
+            rirLow = rirLow,
+            rirHigh = rirHigh,
+            restSeconds = restSeconds,
             cue = cue,
-            supersetLabel = supersetLabel,
+            supersetId = supersetId,
+            groupType = parseGroupType(groupType),
             equipment = exercises?.equipment.orEmpty(),
         )
 }
+
+/** Maps the `plan_group_type` enum wire value to [GroupType]; null for absent/unknown. */
+private fun parseGroupType(value: String?): GroupType? =
+    when (value?.trim()?.lowercase()) {
+        "superset" -> GroupType.SUPERSET
+        "circuit" -> GroupType.CIRCUIT
+        else -> null
+    }
 
 /** The embedded catalog name, category, and equipment from the `exercises` join on `plan_exercises`. */
 @Serializable

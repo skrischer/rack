@@ -64,7 +64,7 @@ data class RestPrompt(
 /**
  * Builds the [RestPrompt] for the just-ticked [planExerciseId] from the day's
  * [exercises]: it classifies the exercise via [classifyExerciseType] and resolves its
- * superset/circuit group context (the consecutive `superset_label` run plus the
+ * superset/circuit group context (the consecutive `superset_id` run plus the
  * exercise's index in it) the same way the Phase-3 log flow does, so the timer applies
  * the group override. Null when the id is not in the day.
  */

@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import de.rack.app.domain.PlanDay
 import de.rack.app.domain.PlanExercise
+import de.rack.app.ui.logging.prescriptionLabel
 import de.rack.app.ui.logging.setCount
 import de.rack.app.ui.theme.RecompBadge
 import de.rack.app.ui.theme.RecompBadgeStyle
@@ -29,6 +30,7 @@ import de.rack.app.ui.theme.RecompPrimaryButton
 import de.rack.app.ui.theme.RecompStat
 import de.rack.app.ui.theme.RecompStatStrip
 import de.rack.app.ui.theme.RecompTheme
+import de.rack.app.ui.theme.SupersetKind
 import de.rack.app.ui.theme.agentHighlight
 import de.rack.app.ui.theme.recompClick
 import de.rack.app.ui.theme.tagColor
@@ -68,7 +70,7 @@ fun TodayHeroCard(
             stats = heroStats(exercises),
             modifier = Modifier.padding(horizontal = spacing.cardInsetH, vertical = spacing.md),
         )
-        HeroPreview(exercises = exercises, onOpenExercise = onOpenExercise)
+        HeroPreview(groups = dayContent.groups, onOpenExercise = onOpenExercise)
         Box(modifier = Modifier.padding(horizontal = spacing.cardInsetH, vertical = spacing.rowInsetV)) {
             RecompPrimaryButton(text = "Session starten", onClick = onStartSession, fillMaxWidth = true)
         }
@@ -142,23 +144,60 @@ private fun HeroHead(
 
 @Composable
 private fun HeroPreview(
-    exercises: List<PlanExercise>,
+    groups: List<ExerciseGroup>,
     onOpenExercise: (String) -> Unit,
 ) {
-    val shown = exercises.take(HERO_PREVIEW_LIMIT)
-    val rest = exercises.drop(HERO_PREVIEW_LIMIT)
+    val items = previewItems(groups)
+    val shown = items.take(HERO_PREVIEW_LIMIT)
+    val rest = items.drop(HERO_PREVIEW_LIMIT)
     Column(modifier = Modifier.padding(horizontal = RecompTheme.spacing.cardInsetH)) {
-        shown.forEachIndexed { index, exercise ->
+        shown.forEachIndexed { index, item ->
+            if (item.groupStart) supersetBadgeText(item.kind)?.let { GroupBadgeRow(text = it) }
             RecompPreviewRow(
-                name = exercise.name,
-                detail = exercise.target.orEmpty(),
+                name = item.exercise.name,
+                detail = prescriptionLabel(item.exercise).orEmpty(),
                 showDivider = index < shown.lastIndex || rest.isNotEmpty(),
-                modifier = Modifier.recompClick(onClick = { onOpenExercise(exercise.exerciseId) }),
+                modifier = Modifier.recompClick(onClick = { onOpenExercise(item.exercise.exerciseId) }),
             )
         }
         if (rest.isNotEmpty()) {
-            RecompMoreRow(text = "+ ${rest.size} weitere · ${rest.joinToString(", ") { it.name }}")
+            RecompMoreRow(text = "+ ${rest.size} weitere · ${rest.joinToString(", ") { it.exercise.name }}")
         }
+    }
+}
+
+/** A preview line carrying its exercise plus its group [kind] and whether it opens a group run. */
+private data class PreviewItem(
+    val exercise: PlanExercise,
+    val kind: SupersetKind,
+    val groupStart: Boolean,
+)
+
+/** Flattens the day's groups into ordered preview items, tagging each group's first member. */
+private fun previewItems(groups: List<ExerciseGroup>): List<PreviewItem> =
+    groups.flatMap { group ->
+        group.exercises.mapIndexed { index, exercise ->
+            PreviewItem(
+                exercise = exercise,
+                kind = group.kind,
+                groupStart = group.kind != SupersetKind.NONE && index == 0,
+            )
+        }
+    }
+
+/** The violet superset/circuit badge label, or null for a standalone exercise. */
+private fun supersetBadgeText(kind: SupersetKind): String? =
+    when (kind) {
+        SupersetKind.SUPERSET -> "Supersatz"
+        SupersetKind.CIRCUIT -> "Zirkel"
+        SupersetKind.NONE -> null
+    }
+
+@Composable
+private fun GroupBadgeRow(text: String) {
+    val spacing = RecompTheme.spacing
+    Box(modifier = Modifier.padding(top = spacing.sm, bottom = spacing.xxs)) {
+        RecompBadge(text = text, style = RecompBadgeStyle.Agent)
     }
 }
 
@@ -205,7 +244,7 @@ private fun DayNumberChip(
 private fun heroStats(exercises: List<PlanExercise>): List<RecompStat> =
     listOf(
         RecompStat(value = exercises.size.toString(), label = "Übungen"),
-        RecompStat(value = exercises.sumOf { setCount(it.target) }.toString(), label = "Sätze"),
+        RecompStat(value = exercises.sumOf { setCount(it.sets) }.toString(), label = "Sätze"),
     )
 
 /** A day-row focus line: the day focus (when set) plus its exercise count, e.g. `Druck · 6 Übungen`. */

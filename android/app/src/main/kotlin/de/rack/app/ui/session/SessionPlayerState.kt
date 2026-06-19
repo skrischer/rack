@@ -8,10 +8,9 @@ import de.rack.app.ui.theme.SupersetKind
  * order the player walks through them. [setIndex] is 0-based within the exercise
  * (not the session); [totalSets] is the exercise's target set count so the UI can
  * show "set N of M". [kind] carries the exercise's group role so the player can
- * render the superset/circuit rotation cue. [target], [rir], and [cue] are the same
- * read-only plan-display data the static day view shows, surfaced here so the player
- * reuses the Phase 3/Phase 7 display data instead of re-reading it. Derived from the
- * position-ordered `plan_exercises`; not stored.
+ * render the superset/circuit rotation cue. Derived from the position-ordered
+ * `plan_exercises`; not stored. The plan prescription is rendered from the static
+ * [SessionExerciseBlock], not per step.
  */
 data class SessionStep(
     val planExerciseId: String,
@@ -20,9 +19,6 @@ data class SessionStep(
     val kind: SupersetKind,
     val setIndex: Int,
     val totalSets: Int,
-    val target: String? = null,
-    val rir: Int? = null,
-    val cue: String? = null,
 )
 
 /**
