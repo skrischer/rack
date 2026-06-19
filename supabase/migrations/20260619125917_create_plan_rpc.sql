@@ -107,13 +107,18 @@ as $$
 declare
   v_result jsonb;
 begin
+  -- The whole payload doubles as the day object; its extra `planId` key is
+  -- harmlessly ignored (insert_plan_day reads only the day fields + exercises).
   v_result := public.insert_plan_day((payload->>'planId')::uuid, payload);
   return jsonb_build_object('planId', payload->>'planId') || v_result;
 end;
 $$;
 
 -- Restrict to authenticated callers (anon has no owner RLS policy and could not
--- write anyway, but is denied execution explicitly).
+-- write anyway, but is denied execution explicitly). `insert_plan_day` is granted
+-- to `authenticated` because the SECURITY INVOKER public RPCs call it as that role;
+-- its direct-call surface is intentional and safe (the RLS-scoped ownership guard
+-- and the per-row WITH CHECK confine it to plans the caller owns).
 revoke execute on function public.insert_plan_day(uuid, jsonb) from public;
 revoke execute on function public.create_plan(jsonb) from public;
 revoke execute on function public.create_plan_day(jsonb) from public;
